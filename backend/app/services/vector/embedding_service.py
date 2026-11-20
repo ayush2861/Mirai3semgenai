@@ -99,7 +99,7 @@ class EmbeddingService:
         try:
             if self._is_onnx:
                 all_results: List[List[float]] = []
-                mini_batch_size = max(1, min(batch_size, 16))
+                mini_batch_size = max(1, min(batch_size, 8))
                 for i in range(0, len(texts), mini_batch_size):
                     chunk_slice = texts[i:i + mini_batch_size]
                     raw_batch = self._model(chunk_slice)

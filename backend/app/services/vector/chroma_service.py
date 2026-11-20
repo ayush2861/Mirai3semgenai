@@ -74,7 +74,7 @@ class ChromaService:
         ]
 
         # Chroma upsert in mini-batches to conserve memory on 512MB RAM instances
-        batch_size = 20
+        batch_size = 10
         for i in range(0, len(chunks), batch_size):
             self.collection.upsert(
                 ids=ids[i:i + batch_size],

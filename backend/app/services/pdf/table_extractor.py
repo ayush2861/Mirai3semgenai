@@ -14,23 +14,20 @@ class TableExtractor:
 
     def extract_tables_from_page(self, page: pymupdf.Page, page_number: int) -> List[TableData]:
         """
-        Locates and extracts all tables on a given page.
-        
-        Args:
-            page: PyMuPDF Page
-            page_number: 1-based page number
-            
-        Returns:
-            List of structured TableData objects
+        Locates and extracts structured tables on a given page.
+        In containerized / low-memory environments (Render 512MB RAM),
+        PyMuPDF's page.find_tables() allocates ~400MB of C heap display-list memory
+        which causes instant OOM container kills on multi-page PDFs.
+        Text content in tables is natively and accurately extracted by page.get_text().
         """
-        extracted_tables: List[TableData] = []
+        import os
+        if os.environ.get("ENABLE_HEAVY_TABLE_DETECTION", "0") != "1":
+            return []
 
+        extracted_tables: List[TableData] = []
         try:
-            # Memory and CPU guard for low-resource environments (Render 512MB RAM):
-            # Line-based table detection requires vector line paths.
-            # Skip find_tables() if page has no line drawings or excessive vector paths.
             drawings = page.get_drawings()
-            if not drawings or len(drawings) < 2 or len(drawings) > 800:
+            if not drawings or len(drawings) < 2 or len(drawings) > 200:
                 return []
 
             tabs = page.find_tables()
