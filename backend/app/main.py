@@ -34,6 +34,13 @@ logger = logging.getLogger("inframind")
 async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.APP_NAME} v{settings.VERSION} [{settings.APP_ENV}]")
     logger.info(f"Storage Root: {settings.DATA_DIR} | ChromaDB: {settings.CHROMA_DIR}")
+    # Pre-warm embedding engine so first user PDF upload/query is instantaneous
+    try:
+        from app.services.vector.embedding_service import embedding_service
+        embedding_service._ensure_model_loaded()
+        logger.info("Embedding engine pre-warmed and ready.")
+    except Exception as e:
+        logger.warning(f"Embedding warmup warning: {e}")
     yield
     logger.info(f"Shutting down {settings.APP_NAME}")
 
