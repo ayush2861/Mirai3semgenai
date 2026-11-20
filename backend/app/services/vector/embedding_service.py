@@ -98,8 +98,14 @@ class EmbeddingService:
         self._ensure_model_loaded()
         try:
             if self._is_onnx:
-                raw_embeddings = self._model(texts)
-                return [list(map(float, vec)) for vec in raw_embeddings]
+                all_results: List[List[float]] = []
+                mini_batch_size = max(1, min(batch_size, 16))
+                for i in range(0, len(texts), mini_batch_size):
+                    chunk_slice = texts[i:i + mini_batch_size]
+                    raw_batch = self._model(chunk_slice)
+                    for vec in raw_batch:
+                        all_results.append([float(x) for x in vec])
+                return all_results
             else:
                 embeddings = self._model.encode(
                     sentences=texts,
