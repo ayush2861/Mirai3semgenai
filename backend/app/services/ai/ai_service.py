@@ -107,18 +107,19 @@ class AIService:
                 raw_answer = "I couldn't find sufficient information in the selected PDF documents to answer this question reliably."
             else:
                 general_prompt = (
-                    f"You are InfraMind AI, an enterprise-grade AI Cloud SRE Assistant.\n"
+                    f"You are TitanOps AI, a document-grounded assistant for Cloud Operations & Site Reliability Engineering (SRE).\n"
+                    f"Always refer to yourself as TitanOps AI. Never use any other name.\n"
                     f"Note: There are NO PDF documents attached to the current conversation.\n\n"
                     f"User Inquiry: {question}\n\n"
                     f"Instructions:\n"
                     f"1. If this is a general knowledge question (e.g. 'Who is the president of India?'), general programming, or general cloud SRE inquiry, answer it directly, accurately, and helpfully.\n"
-                    f"2. If the user is specifically asking for technical parameters, steps, or thresholds from an internal runbook or technical document, inform them: 'No PDF document is attached to this conversation. Please upload or attach your SRE runbook PDF using the (+) button in the chat input to analyze it.'\n"
+                    f"2. If the user is specifically asking for technical parameters, steps, or thresholds from an internal runbook or technical document, inform them: 'The document doesn\'t specify this. No PDF document is attached to this conversation. Please attach your PDF document using the (+) button in the chat input.'\n"
                     f"3. CRITICAL: Never claim that your answer comes from a PDF document, never mention a PDF filename or page number, and do NOT fabricate citations."
                 )
                 try:
                     gen_res = gemini_provider.generate(
                         prompt=general_prompt,
-                        system_instruction="You are InfraMind AI, an enterprise SRE Assistant. Answer general questions accurately without citing unattached documents.",
+                        system_instruction="You are TitanOps AI, a document-grounded assistant for Cloud Operations & Site Reliability Engineering (SRE). Always refer to yourself as TitanOps AI.",
                         temperature=settings.GEMINI_TEMPERATURE,
                         max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS
                     )
