@@ -5,14 +5,14 @@ from datetime import datetime, timezone
 class DocumentStageTracker:
     """
     Tracks real-time granular processing events for PDF documents:
-    1. uploading (15%) -> 'Uploading PDF...'
-    2. extracting_text (30%) -> 'Extracting text...'
-    3. analyzing_pages (48%) -> 'Analyzing pages...'
-    4. chunking_document (62%) -> 'Chunking document...'
-    5. generating_embeddings (78%) -> 'Generating embeddings...'
-    6. indexing_document (92%) -> 'Indexing document...'
-    7. ready (100%) -> 'Ready to chat'
-    or failed (0%) -> 'Processing failed'
+    1. uploading (10%) -> 'Uploading PDF...'
+    2. validating (20%) -> 'Validating PDF...'
+    3. extracting_text (40%) -> 'Extracting text...'
+    4. chunking_document (60%) -> 'Chunking document...'
+    5. generating_embeddings (80%) -> 'Generating embeddings...'
+    6. indexing_document (95%) -> 'Indexing document...'
+    7. ready (100%) -> 'Document ready!'
+    or failed (0%) -> 'Processing failed' (with failed_stage and exact error reason)
     """
 
     def __init__(self):
@@ -24,7 +24,8 @@ class DocumentStageTracker:
         stage: str,
         progress: int,
         message: str,
-        error: Optional[str] = None
+        error: Optional[str] = None,
+        failed_stage: Optional[str] = None
     ) -> Dict[str, Any]:
         info = {
             "document_id": document_id,
@@ -32,6 +33,7 @@ class DocumentStageTracker:
             "progress": progress,
             "message": message,
             "error": error,
+            "failed_stage": failed_stage,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         self._stages[document_id] = info
@@ -47,8 +49,9 @@ class DocumentStageTracker:
                     "document_id": document_id,
                     "stage": "ready",
                     "progress": 100,
-                    "message": "Ready to chat",
+                    "message": "Document ready!",
                     "error": None,
+                    "failed_stage": None,
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }
             if default_meta.get("status") == "failed":
@@ -57,25 +60,28 @@ class DocumentStageTracker:
                     "stage": "failed",
                     "progress": 0,
                     "message": "Processing failed",
-                    "error": default_meta.get("error_message"),
+                    "error": default_meta.get("error_message") or "Document processing failed.",
+                    "failed_stage": default_meta.get("failed_stage"),
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }
             if default_meta.get("status") == "processing":
                 return {
                     "document_id": document_id,
                     "stage": "extracting_text",
-                    "progress": 30,
+                    "progress": 40,
                     "message": "Extracting text...",
                     "error": None,
+                    "failed_stage": None,
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }
 
         return {
             "document_id": document_id,
             "stage": "uploading",
-            "progress": 15,
+            "progress": 10,
             "message": "Uploading PDF...",
             "error": None,
+            "failed_stage": None,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
 

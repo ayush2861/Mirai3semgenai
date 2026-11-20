@@ -86,7 +86,25 @@ class DocumentService:
 
         file_hash = hasher.hexdigest()
 
-        # 3. Record metadata
+        # 3. Deduplication: check if already uploaded/indexed with same name and content for this user
+        for existing_id, meta in all_meta.items():
+            if meta.get("user_id") == user_id and meta.get("sha256_hash") == file_hash and meta.get("filename") == clean_filename:
+                existing_file = settings.UPLOADS_DIR / meta.get("stored_filename", "")
+                if existing_file.exists():
+                    logger.info(f"Duplicate document recognized for user '{user_id}': reusing existing document {existing_id} ({meta['filename']})")
+                    if target_path.exists() and target_path != existing_file:
+                        try:
+                            target_path.unlink()
+                        except Exception:
+                            pass
+                    return DocumentUploadResponse(
+                        document_id=existing_id,
+                        filename=meta["filename"],
+                        status=meta.get("status", "uploaded"),
+                        message="Document uploaded successfully"
+                    )
+
+        # 4. Record metadata
         now_iso = datetime.now(timezone.utc).isoformat()
         metadata_entry = {
             "document_id": doc_id,

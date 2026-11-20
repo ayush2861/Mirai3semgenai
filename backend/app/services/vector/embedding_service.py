@@ -99,14 +99,12 @@ class EmbeddingService:
         try:
             if self._is_onnx:
                 all_results: List[List[float]] = []
-                mini_batch_size = max(1, min(batch_size, 8))
+                mini_batch_size = max(1, min(batch_size, 64))
                 for i in range(0, len(texts), mini_batch_size):
                     chunk_slice = texts[i:i + mini_batch_size]
                     raw_batch = self._model(chunk_slice)
                     for vec in raw_batch:
                         all_results.append([float(x) for x in vec])
-                import gc
-                gc.collect()
                 return all_results
             else:
                 embeddings = self._model.encode(

@@ -17,6 +17,7 @@ import {
   uploadDocument,
   indexDocument,
   fetchDocumentStage,
+  retryDocumentProcessing,
   attachDocumentToConversation,
   detachDocumentFromConversation
 } from './api';
@@ -140,6 +141,98 @@ export const App: React.FC = () => {
     }
   };
 
+  const pollPipelineStage = async (
+    tempId: string,
+    docId: string,
+    filename: string,
+    fileSize: number,
+    fileObj?: File
+  ) => {
+    let isDone = false;
+    const pollStartTime = Date.now();
+    const MAX_TIMEOUT_MS = 180000; // 3 minutes timeout
+
+    await new Promise<void>((resolve, reject) => {
+      const timer = setInterval(async () => {
+        if (isDone) {
+          clearInterval(timer);
+          return;
+        }
+
+        if (Date.now() - pollStartTime > MAX_TIMEOUT_MS) {
+          isDone = true;
+          clearInterval(timer);
+          reject(new Error('Document processing timed out after 3 minutes. Please click Retry.'));
+          return;
+        }
+
+        try {
+          const stageInfo = await fetchDocumentStage(docId);
+          if (!stageInfo || isDone) return;
+
+          setPendingAttachments(prev =>
+            prev.map(f => (f.id === tempId || f.document_id === docId ? {
+              ...f,
+              document_id: docId,
+              stage: stageInfo.stage,
+              stageLabel: stageInfo.message,
+              progress: stageInfo.progress,
+              status: stageInfo.stage === 'failed' ? 'failed' : (stageInfo.stage === 'ready' ? 'ready' : 'indexing'),
+              error_message: stageInfo.error || f.error_message,
+              failed_stage: stageInfo.failed_stage || f.failed_stage,
+              isUploading: false
+            } : f))
+          );
+
+          if (stageInfo.stage === 'ready') {
+            isDone = true;
+            clearInterval(timer);
+            resolve();
+          } else if (stageInfo.stage === 'failed') {
+            isDone = true;
+            clearInterval(timer);
+            reject(new Error(stageInfo.error || 'Document processing failed'));
+          }
+        } catch (pollErr) {
+          console.warn('Polling check warn:', pollErr);
+        }
+      }, 250);
+    });
+
+    // Mark as ready
+    const readyAttach: AttachedDocument = {
+      id: docId,
+      document_id: docId,
+      name: filename,
+      size_bytes: fileSize,
+      status: 'ready',
+      stage: 'ready',
+      stageLabel: 'Document ready!',
+      progress: 100,
+      isUploading: false,
+      fileObj
+    };
+
+    setPendingAttachments(prev =>
+      prev.map(f => (f.id === tempId || f.document_id === docId ? readyAttach : f))
+    );
+
+    if (activeConvId) {
+      try {
+        await attachDocumentToConversation(activeConvId, docId);
+        const updatedConv = await fetchConversation(activeConvId);
+        setConversationDocuments(updatedConv.documents || []);
+        const updatedConvs = await fetchConversations();
+        setConversations(updatedConvs);
+      } catch (ce) {
+        console.error('Failed to associate doc with conversation:', ce);
+      }
+    }
+
+    const updatedDocs = await fetchDocuments();
+    setDocuments(updatedDocs);
+  };
+
   const runAttachmentProcessingPipeline = async (tempId: string, file: File, existingDocId?: string) => {
     let docId = existingDocId;
 
@@ -152,7 +245,7 @@ export const App: React.FC = () => {
             status: 'uploading',
             stage: 'uploading',
             stageLabel: 'Uploading PDF...',
-            progress: 15,
+            progress: 10,
             isUploading: true
           } : f))
         );
@@ -161,89 +254,13 @@ export const App: React.FC = () => {
         docId = uploadRes.document_id;
       }
 
-      // Stage 2: Extracting text...
-      setPendingAttachments(prev =>
-        prev.map(f => (f.id === tempId ? {
-          ...f,
-          document_id: docId,
-          status: 'indexing',
-          stage: 'extracting_text',
-          stageLabel: 'Extracting text...',
-          progress: 30
-        } : f))
-      );
-
-      // Real-time backend stage polling while indexDocument runs
-      let isDone = false;
-      const pollTimer = setInterval(async () => {
-        if (isDone) {
-          clearInterval(pollTimer);
-          return;
-        }
-        try {
-          const stageInfo = await fetchDocumentStage(docId!);
-          if (stageInfo && !isDone) {
-            setPendingAttachments(prev =>
-              prev.map(f => (f.id === tempId || f.document_id === docId ? {
-                ...f,
-                stage: stageInfo.stage,
-                stageLabel: stageInfo.message,
-                progress: stageInfo.progress,
-                status: stageInfo.stage === 'failed' ? 'failed' : (stageInfo.stage === 'ready' ? 'ready' : 'indexing'),
-                error_message: stageInfo.error || f.error_message
-              } : f))
-            );
-          }
-        } catch {
-          // Ignore transient poll error
-        }
-      }, 180);
-
-      try {
-        await indexDocument(docId);
-      } finally {
-        isDone = true;
-        clearInterval(pollTimer);
-      }
-
-      // Stage 7: Ready to chat
-      const readyAttach: AttachedDocument = {
-        id: docId,
-        document_id: docId,
-        name: file.name,
-        size_bytes: file.size,
-        status: 'ready',
-        stage: 'ready',
-        stageLabel: 'Ready to chat',
-        progress: 100,
-        isUploading: false,
-        fileObj: file
-      };
-
-      setPendingAttachments(prev =>
-        prev.map(f => (f.id === tempId || f.document_id === docId ? readyAttach : f))
-      );
-
-      // If already in an active conversation, persistently associate doc with this conversation
-      if (activeConvId) {
-        try {
-          await attachDocumentToConversation(activeConvId, docId);
-          const updatedConv = await fetchConversation(activeConvId);
-          setConversationDocuments(updatedConv.documents || []);
-          const updatedConvs = await fetchConversations();
-          setConversations(updatedConvs);
-        } catch (ce) {
-          console.error('Failed to associate doc with conversation:', ce);
-        }
-      }
-
-      const updatedDocs = await fetchDocuments();
-      setDocuments(updatedDocs);
+      await pollPipelineStage(tempId, docId, file.name, file.size, file);
     } catch (err: any) {
       console.error('File upload/indexing failed:', err);
       setPendingAttachments(prev =>
-        prev.map(f => (f.id === tempId ? {
+        prev.map(f => (f.id === tempId || f.document_id === docId ? {
           ...f,
+          document_id: docId,
           status: 'failed',
           stage: 'failed',
           stageLabel: 'Processing failed',
@@ -267,7 +284,7 @@ export const App: React.FC = () => {
       status: 'uploading',
       stage: 'uploading',
       stageLabel: 'Uploading PDF...',
-      progress: 15,
+      progress: 10,
       isUploading: true,
       fileObj: file
     };
@@ -276,14 +293,43 @@ export const App: React.FC = () => {
     await runAttachmentProcessingPipeline(tempId, file);
   };
 
-  const handleRetryAttachment = (id: string) => {
+  const handleRetryAttachment = async (id: string) => {
     const item = pendingAttachments.find(f => f.id === id);
     if (!item) return;
-    if (item.fileObj) {
-      runAttachmentProcessingPipeline(item.id, item.fileObj, item.document_id);
-    } else if (item.document_id) {
-      const dummyFile = new File([], item.name, { type: 'application/pdf' });
-      runAttachmentProcessingPipeline(item.id, dummyFile, item.document_id);
+
+    if (item.document_id) {
+      // Fast path: retry existing document without re-uploading file
+      try {
+        setPendingAttachments(prev =>
+          prev.map(f => (f.id === id ? {
+            ...f,
+            status: 'indexing',
+            stage: 'validating',
+            stageLabel: 'Validating PDF...',
+            progress: 20,
+            error_message: undefined,
+            failed_stage: undefined
+          } : f))
+        );
+
+        await retryDocumentProcessing(item.document_id);
+        await pollPipelineStage(item.id, item.document_id, item.name, item.size_bytes || 0, item.fileObj);
+      } catch (err: any) {
+        console.error('Retry failed:', err);
+        setPendingAttachments(prev =>
+          prev.map(f => (f.id === id ? {
+            ...f,
+            status: 'failed',
+            stage: 'failed',
+            stageLabel: 'Processing failed',
+            progress: 0,
+            isUploading: false,
+            error_message: err.message || 'Processing retry failed'
+          } : f))
+        );
+      }
+    } else if (item.fileObj) {
+      runAttachmentProcessingPipeline(item.id, item.fileObj);
     }
   };
 

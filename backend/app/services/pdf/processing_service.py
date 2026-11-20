@@ -51,7 +51,7 @@ class UniversalProcessingService:
     def _get_legacy_processed_file(self, document_id: str) -> Path:
         return settings.PROCESSED_DIR / f"{document_id}.json"
 
-    async def process_document(self, document_id: str) -> DocumentProcessingResponse:
+    async def process_document(self, document_id: str, force: bool = False) -> DocumentProcessingResponse:
         """
         Executes the universal extraction and chunking pipeline for a document.
         """
@@ -62,11 +62,26 @@ class UniversalProcessingService:
         doc_meta = all_meta[document_id]
         current_status = doc_meta.get("status", "uploaded")
 
-        # Prevent duplicate concurrent processing
-        if current_status == "processing":
-            raise DocumentProcessingError(
-                "Document is currently being processed by another worker. Please wait."
-            )
+        # Prevent duplicate concurrent processing with stale-lock breaker (3 minutes TTL)
+        if current_status == "processing" and not force:
+            started_at_str = doc_meta.get("processing_started_at")
+            is_stale = False
+            if started_at_str:
+                try:
+                    dt = datetime.fromisoformat(started_at_str)
+                    age_seconds = (datetime.now(timezone.utc) - dt).total_seconds()
+                    if age_seconds > 180:
+                        is_stale = True
+                        logger.warning(f"Breaking stale processing lock on document {document_id} (age: {age_seconds:.1f}s)")
+                except Exception:
+                    is_stale = True
+            else:
+                is_stale = True
+
+            if not is_stale:
+                raise DocumentProcessingError(
+                    "Document is currently being processed by another worker. Please wait."
+                )
 
         stored_filename = doc_meta.get("stored_filename")
         if not stored_filename:
@@ -76,17 +91,39 @@ class UniversalProcessingService:
         if not file_path.exists():
             raise DocumentProcessingError("Uploaded PDF file could not be found on disk.")
 
+        now_iso = datetime.now(timezone.utc).isoformat()
+
         # Update status to 'processing'
         doc_meta["status"] = "processing"
+        doc_meta["processing_started_at"] = now_iso
         doc_meta["error_message"] = None
+        doc_meta["failed_stage"] = None
         all_meta[document_id] = doc_meta
         document_service._save_metadata(all_meta)
 
-        now_iso = datetime.now(timezone.utc).isoformat()
-
         try:
+            # Stage 1: Validating PDF...
+            document_stage_tracker.set_stage(document_id, "validating", 20, "Validating PDF...")
+
+            # Validate openability and encryption upfront
+            try:
+                import pymupdf
+                test_doc = pymupdf.open(str(file_path))
+                if test_doc.is_encrypted:
+                    if not test_doc.authenticate(""):
+                        test_doc.close()
+                        raise FileEncryptedError("PDF is password-protected. Please remove the password and try again.")
+                if len(test_doc) == 0:
+                    test_doc.close()
+                    raise FileCorruptedError("PDF document is empty (0 pages).")
+                test_doc.close()
+            except (FileEncryptedError, FileCorruptedError):
+                raise
+            except Exception as ve:
+                raise FileCorruptedError(f"PDF file is corrupted or unreadable: {str(ve)}")
+
             # Stage 2: Extracting text...
-            document_stage_tracker.set_stage(document_id, "extracting_text", 30, "Extracting text...")
+            document_stage_tracker.set_stage(document_id, "extracting_text", 40, "Extracting text...")
 
             # 1. Run Universal PDF extraction offloaded to worker thread (prevents event loop starvation)
             processed_pages, analysis = await asyncio.to_thread(
@@ -96,8 +133,8 @@ class UniversalProcessingService:
                 document_name=doc_meta["filename"]
             )
 
-            # Stage 3: Analyzing pages...
-            document_stage_tracker.set_stage(document_id, "analyzing_pages", 48, "Analyzing pages...")
+            # Stage 3: Chunking document...
+            document_stage_tracker.set_stage(document_id, "chunking_document", 60, "Chunking document...")
 
             # 2. Chunk text with LangChain RecursiveCharacterTextSplitter
             # Map ProcessedPage to ExtractedPage for text_chunker compatibility
@@ -111,9 +148,6 @@ class UniversalProcessingService:
                 )
                 for p in processed_pages
             ]
-
-            # Stage 4: Chunking document...
-            document_stage_tracker.set_stage(document_id, "chunking_document", 62, "Chunking document...")
 
             chunks = text_chunker.chunk_document(
                 document_id=document_id,
@@ -201,17 +235,21 @@ class UniversalProcessingService:
             )
 
         except (FileCorruptedError, FileEncryptedError) as e:
-            document_stage_tracker.set_stage(document_id, "failed", 0, "Processing failed", error=e.message)
+            failed_stage = "Validating PDF"
+            document_stage_tracker.set_stage(document_id, "failed", 0, "Processing failed", error=e.message, failed_stage=failed_stage)
             doc_meta["status"] = "failed"
+            doc_meta["failed_stage"] = failed_stage
             doc_meta["error_message"] = e.message
             all_meta[document_id] = doc_meta
             document_service._save_metadata(all_meta)
             raise e
         except Exception as e:
             logger.error(f"Unexpected processing error for document {document_id}: {e}")
-            err_msg = f"An error occurred during universal processing: {str(e)}"
-            document_stage_tracker.set_stage(document_id, "failed", 0, "Processing failed", error=err_msg)
+            err_msg = f"An error occurred during text extraction: {str(e)}"
+            failed_stage = "Extracting text"
+            document_stage_tracker.set_stage(document_id, "failed", 0, "Processing failed", error=err_msg, failed_stage=failed_stage)
             doc_meta["status"] = "failed"
+            doc_meta["failed_stage"] = failed_stage
             doc_meta["error_message"] = err_msg
             all_meta[document_id] = doc_meta
             document_service._save_metadata(all_meta)

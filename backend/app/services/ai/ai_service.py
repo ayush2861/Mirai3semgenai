@@ -1,3 +1,4 @@
+import re
 import uuid
 import time
 import logging
@@ -17,6 +18,8 @@ from app.services.document_service import document_service
 
 logger = logging.getLogger(__name__)
 
+GREETING_TEXT = "Hello! I am TitanOps AI, your assistant for Cloud Operations and Site Reliability Engineering (SRE)."
+
 
 class AIService:
     """
@@ -31,6 +34,34 @@ class AIService:
     def __init__(self):
         # In-memory conversation store: conversation_id -> list of turns
         self._conversations: Dict[str, List[Dict[str, str]]] = {}
+
+    @staticmethod
+    def _apply_greeting_policy(answer: str, is_first_response: bool) -> str:
+        """
+        Enforces that the greeting:
+        'Hello! I am TitanOps AI, your assistant for Cloud Operations and Site Reliability Engineering (SRE).'
+        is included ONLY ONCE at the beginning of the first assistant message of a chat,
+        and NEVER repeated in follow-up answers or subsequent turns.
+        """
+        if not answer:
+            return answer
+
+        # Pattern to match greeting variations from model output or previous turns
+        pattern = re.compile(
+            r"^(?:(?:Hello|Hi|Hey|Greetings)!?\s*)?(?:I am|I'm)\s+TitanOps\s+AI[^\n.:!]*[.:!]?\s*(?:How can I (?:help|assist) you[^\n?:!]*[?:!]?\s*)?",
+            re.IGNORECASE
+        )
+
+        clean_body = pattern.sub("", answer.strip()).strip()
+
+        if is_first_response:
+            if clean_body:
+                return f"{GREETING_TEXT}\n\n{clean_body}"
+            return GREETING_TEXT
+        else:
+            if clean_body:
+                return clean_body
+            return "How can I assist with your infrastructure today?"
 
     def get_history(self, conversation_id: str) -> List[Dict[str, str]]:
         return self._conversations.get(conversation_id, [])
@@ -62,6 +93,13 @@ class AIService:
         # 0. Conversation and Document Context Resolution
         conv = conversation_service.get_or_create_conversation(conversation_id, user_id=user_id)
         conv_id = conv["id"]
+
+        # Check if an assistant message already exists in this conversation
+        existing_messages = conv.get("messages", [])
+        has_prior_assistant = any(m.get("role") == "assistant" for m in existing_messages) or any(
+            t.get("role") == "assistant" for t in self._conversations.get(conv_id, [])
+        )
+        is_first_response = not has_prior_assistant
 
         user_msg_attachments = []
         # If document_ids explicitly provided, attach them to the conversation persistently
@@ -120,6 +158,11 @@ class AIService:
             if user_id.startswith("user_empty"):
                 raw_answer = "I couldn't find sufficient information in the selected PDF documents to answer this question reliably."
             else:
+                followup_instruction = (
+                    "4. This is an ongoing conversation. Answer directly without greeting or introducing yourself."
+                    if not is_first_response else
+                    "4. This is the start of the conversation. Answer helpfully."
+                )
                 general_prompt = (
                     f"You are TitanOps AI, a document-grounded assistant for Cloud Operations & Site Reliability Engineering (SRE).\n"
                     f"Always refer to yourself as TitanOps AI. Never use any other name.\n"
@@ -128,7 +171,8 @@ class AIService:
                     f"Instructions:\n"
                     f"1. If this is a general knowledge question (e.g. 'Who is the president of India?'), general programming, or general cloud SRE inquiry, answer it directly, accurately, and helpfully.\n"
                     f"2. If the user is specifically asking for technical parameters, steps, or thresholds from an internal runbook or technical document, inform them: 'The document doesn\'t specify this. No PDF document is attached to this conversation. Please attach your PDF document using the (+) button in the chat input.'\n"
-                    f"3. CRITICAL: Never claim that your answer comes from a PDF document, never mention a PDF filename or page number, and do NOT fabricate citations."
+                    f"3. CRITICAL: Never claim that your answer comes from a PDF document, never mention a PDF filename or page number, and do NOT fabricate citations.\n"
+                    f"{followup_instruction}"
                 )
                 try:
                     gen_res = gemini_provider.generate(
@@ -145,15 +189,17 @@ class AIService:
                 if not raw_answer:
                     raw_answer = "No PDF document is attached to this conversation. Please upload your runbook PDF using the (+) button in the chat input to analyze it."
 
+            formatted_answer = self._apply_greeting_policy(raw_answer, is_first_response=is_first_response)
+
             self.record_turn(conv_id, "user", question)
-            self.record_turn(conv_id, "assistant", raw_answer)
+            self.record_turn(conv_id, "assistant", formatted_answer)
             conversation_service.add_message(conv_id, "user", question, user_id=user_id, attached_files=user_msg_attachments)
-            conversation_service.add_message(conv_id, "assistant", raw_answer, user_id=user_id, sources=[])
+            conversation_service.add_message(conv_id, "assistant", formatted_answer, user_id=user_id, sources=[])
 
             return ChatResponse(
                 conversation_id=conv_id,
-                message=raw_answer,
-                answer=raw_answer,
+                message=formatted_answer,
+                answer=formatted_answer,
                 sources=[],
                 attached_documents=[],
                 status="completed"
@@ -207,18 +253,19 @@ class AIService:
             insufficient_msg = (
                 "I couldn't find sufficient information in the PDFs attached to this conversation to answer this question reliably."
             )
+            formatted_answer = self._apply_greeting_policy(insufficient_msg, is_first_response=is_first_response)
             self.record_turn(conv_id, "user", question)
-            self.record_turn(conv_id, "assistant", insufficient_msg)
+            self.record_turn(conv_id, "assistant", formatted_answer)
             conversation_service.add_message(conv_id, "user", question, user_id=user_id, attached_files=user_msg_attachments)
-            conversation_service.add_message(conv_id, "assistant", insufficient_msg, user_id=user_id)
+            conversation_service.add_message(conv_id, "assistant", formatted_answer, user_id=user_id)
 
             current_conv = conversation_service.get_or_create_conversation(conv_id, user_id=user_id)
             attached_docs = current_conv.get("documents", [])
 
             return ChatResponse(
                 conversation_id=conv_id,
-                message=insufficient_msg,
-                answer=insufficient_msg,
+                message=formatted_answer,
+                answer=formatted_answer,
                 sources=[],
                 attached_documents=attached_docs,
                 status="completed"
@@ -232,7 +279,8 @@ class AIService:
         rag_prompt = prompt_builder.build_rag_prompt(
             question=question,
             evidence=evidence_text,
-            history=history
+            history=history,
+            is_first_response=is_first_response
         )
 
         # 6. Generate grounded response using Gemini API
@@ -257,12 +305,13 @@ class AIService:
                 f"Failed to generate answer from Gemini API: {str(e)}\n\n"
                 f"Retrieved {len(structured_sources)} evidence chunks from source documents."
             )
+            formatted_answer = self._apply_greeting_policy(fallback_answer, is_first_response=is_first_response)
             current_conv = conversation_service.get_or_create_conversation(conv_id, user_id=user_id)
             attached_docs = current_conv.get("documents", [])
             return ChatResponse(
                 conversation_id=conv_id,
-                message=fallback_answer,
-                answer=fallback_answer,
+                message=formatted_answer,
+                answer=formatted_answer,
                 sources=structured_sources,
                 attached_documents=attached_docs,
                 status="error"
@@ -281,6 +330,8 @@ class AIService:
             retrieved_evidence_text=evidence_text
         )
 
+        formatted_answer = self._apply_greeting_policy(verified_answer, is_first_response=is_first_response)
+
         total_latency_ms = (time.perf_counter() - start_time) * 1000
         logger.info(
             f"RAG turn finished in {total_latency_ms:.1f}ms (Retrieval: {retrieval_latency_ms:.1f}ms, "
@@ -291,17 +342,17 @@ class AIService:
 
         # 9. Record turn into in-memory and persistent conversation history
         self.record_turn(conv_id, "user", question)
-        self.record_turn(conv_id, "assistant", verified_answer)
+        self.record_turn(conv_id, "assistant", formatted_answer)
         conversation_service.add_message(conv_id, "user", question, user_id=user_id, attached_files=user_msg_attachments)
-        conversation_service.add_message(conv_id, "assistant", verified_answer, user_id=user_id, sources=verified_sources)
+        conversation_service.add_message(conv_id, "assistant", formatted_answer, user_id=user_id, sources=verified_sources)
 
         current_conv = conversation_service.get_or_create_conversation(conv_id, user_id=user_id)
         attached_docs = current_conv.get("documents", [])
 
         return ChatResponse(
             conversation_id=conv_id,
-            message=verified_answer,
-            answer=verified_answer,
+            message=formatted_answer,
+            answer=formatted_answer,
             sources=verified_sources,
             attached_documents=attached_docs,
             status="completed"

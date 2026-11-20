@@ -9,17 +9,17 @@ from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are TitanOps AI, a document-grounded assistant for Cloud Operations & Site Reliability Engineering (SRE).
+SYSTEM_PROMPT = """You are TitanOps AI (InfraMind AI), a document-grounded assistant for Cloud Operations & Site Reliability Engineering (SRE).
 Always refer to yourself as TitanOps AI. Never use any other name.
 
 ## 1. Grounding
-- Answer ONLY from the retrieved context passages provided with the question.
+- Answer ONLY from the retrieved context passages and EVIDENCE provided with the question.
 - Never use outside knowledge, assumptions, or guesses to fill gaps.
 - Never add details that are not in the context (for example, do not call a node "primary" if the text only says "node"). Copy facts exactly: numbers, units, names, thresholds, and conditions.
 - If passages conflict, say so and cite both.
 
 ## 2. Out-of-scope or missing information
-- If the context does not contain the answer, reply in this format:
+- If the context does not contain sufficient information to answer, reply in this format:
   "The document doesn't specify this."
   Then add one line saying what the document does cover on the topic, if anything.
 - Do NOT blame missing real-time data or tools. Do NOT invent an answer.
@@ -40,7 +40,7 @@ Always refer to yourself as TitanOps AI. Never use any other name.
 
 ## 6. Answer quality & Tone
 - Lead with the direct answer in the first sentence, then add detail.
-- Don't introduce yourself in answers. Use your name only if asked who you are.
+- Never repeat greetings or introduce yourself in follow-up answers. In an ongoing conversation, answer follow-up questions directly without conversational greetings or introducing yourself again.
 - If the question has timelines or tiers (for example, "5 minutes to acknowledge" and "15 minutes total to escalate"), identify exactly what is asked and state the matching value. Mention the related values briefly so the answer is not ambiguous.
 - When the user asks for "detail" or "explain", structure the answer as:
   (a) what it is, (b) the exact conditions or thresholds, (c) the step-by-step behavior, (d) the section or page it comes from.
@@ -79,7 +79,8 @@ class PromptBuilder:
         self,
         question: str,
         evidence: str,
-        history: Optional[List[Dict[str, str]]] = None
+        history: Optional[List[Dict[str, str]]] = None,
+        is_first_response: bool = True
     ) -> str:
         prompt_parts: List[str] = []
 
@@ -104,10 +105,17 @@ class PromptBuilder:
         # 3. Current Question
         prompt_parts.append("=== CURRENT USER INQUIRY ===")
         prompt_parts.append(f"Question: {question.strip()}")
-        prompt_parts.append(
-            "Instructions: Provide a clear, technical, step-by-step grounded response based strictly on the evidence above. "
-            "Cite all relevant source documents and page numbers."
-        )
+        if not is_first_response or (history and len(history) > 0):
+            prompt_parts.append(
+                "Instructions: Provide a clear, technical, step-by-step grounded response based strictly on the evidence above. "
+                "Do NOT include any greeting or self-introduction (this is a follow-up inquiry in an ongoing conversation). "
+                "Cite all relevant source documents and page numbers."
+            )
+        else:
+            prompt_parts.append(
+                "Instructions: Provide a clear, technical, step-by-step grounded response based strictly on the evidence above. "
+                "Cite all relevant source documents and page numbers."
+            )
 
         return "\n".join(prompt_parts)
 

@@ -283,10 +283,11 @@ export async function fetchProcessingStatus(documentId: string): Promise<any> {
 
 export interface DocumentStageInfo {
   document_id: string;
-  stage: 'uploading' | 'extracting_text' | 'analyzing_pages' | 'chunking_document' | 'generating_embeddings' | 'indexing_document' | 'ready' | 'failed';
+  stage: 'uploading' | 'validating' | 'extracting_text' | 'analyzing_pages' | 'chunking_document' | 'generating_embeddings' | 'indexing_document' | 'ready' | 'failed';
   progress: number;
   message: string;
   error?: string | null;
+  failed_stage?: string | null;
   updated_at?: string;
 }
 
@@ -300,6 +301,21 @@ export async function fetchDocumentStage(documentId: string): Promise<DocumentSt
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error?.message || err.detail || 'Failed to fetch document stage');
+  }
+  return res.json();
+}
+
+/**
+ * Retries document processing and indexing without re-uploading file.
+ */
+export async function retryDocumentProcessing(documentId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/documents/${documentId}/retry`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.detail || 'Failed to retry document processing');
   }
   return res.json();
 }

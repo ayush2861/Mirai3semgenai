@@ -153,10 +153,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 switch (file.stage) {
                   case 'uploading':
                     return 'Uploading PDF...';
+                  case 'validating':
+                    return 'Validating PDF...';
                   case 'extracting_text':
                     return 'Extracting text...';
                   case 'analyzing_pages':
-                    return 'Analyzing pages...';
+                    return 'Extracting text...';
                   case 'chunking_document':
                     return 'Chunking document...';
                   case 'generating_embeddings':
@@ -164,9 +166,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   case 'indexing_document':
                     return 'Indexing document...';
                   case 'ready':
-                    return 'Ready to chat';
+                    return 'Document ready!';
                   case 'failed':
-                    return 'Processing failed';
+                    return file.failed_stage ? `${file.failed_stage} failed` : 'Processing failed';
                   default:
                     return file.status === 'indexing' ? 'Indexing document...' : 'Uploading PDF...';
                 }
@@ -200,11 +202,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                       <PdfIndexingAnimation progress={file.progress} />
                     ) : isFailed ? (
                       <div
-                        className="flex flex-col items-center justify-center space-y-1 p-1 text-center bg-[#0F0F0F] w-full h-full"
-                        title={file.error_message || 'Indexing failed'}
+                        className="flex flex-col items-center justify-center space-y-0.5 p-1 text-center bg-[#0F0F0F] w-full h-full cursor-help"
+                        title={
+                          file.failed_stage
+                            ? `Stage: ${file.failed_stage}\nReason: ${file.error_message || 'Processing failed'}`
+                            : file.error_message || 'Processing failed'
+                        }
                       >
                         <AlertCircle size={18} className="text-red-400 shrink-0" />
-                        <span className="text-[9px] text-red-400 font-medium leading-tight">Error</span>
+                        <span className="text-[8.5px] text-red-400 font-semibold leading-tight line-clamp-2 px-0.5">
+                          {file.failed_stage ? `${file.failed_stage} Error` : 'Error'}
+                        </span>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center relative w-full h-full bg-[#0F0F0F]">
@@ -244,7 +252,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                       <div className="flex items-center justify-between w-full">
                         <div
                           className="flex items-center space-x-1 min-w-0 flex-1 overflow-hidden"
-                          title={file.error_message || 'Indexing failed'}
+                          title={
+                            file.failed_stage
+                              ? `Stage: ${file.failed_stage}\nReason: ${file.error_message || 'Indexing failed'}`
+                              : file.error_message || 'Indexing failed'
+                          }
                         >
                           <span className="text-[8.5px] font-black tracking-wider px-1 py-0.5 rounded bg-[#DC2626] text-white leading-none shrink-0">
                             PDF
@@ -260,8 +272,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                               e.stopPropagation();
                               onRetryAttachment(file.id);
                             }}
-                            className="text-[9px] text-blue-400 hover:text-blue-300 font-semibold underline shrink-0 ml-1 cursor-pointer"
-                            title="Retry processing"
+                            className="text-[9.5px] text-blue-400 hover:text-blue-300 font-semibold underline shrink-0 ml-1 cursor-pointer transition-colors"
+                            title="Retry processing without re-uploading"
                           >
                             Retry
                           </button>

@@ -98,7 +98,7 @@ class IndexingService:
 
         try:
             # Stage 5: Generating embeddings...
-            document_stage_tracker.set_stage(document_id, "generating_embeddings", 78, "Generating embeddings...")
+            document_stage_tracker.set_stage(document_id, "generating_embeddings", 80, "Generating embeddings...")
 
             # 2. Batch generate embeddings using local all-MiniLM-L6-v2 (offloaded to threadpool)
             logger.info(f"Generating embeddings for {len(chunks)} chunks of document '{doc_meta['filename']}'...")
@@ -106,12 +106,12 @@ class IndexingService:
             embeddings = await asyncio.to_thread(
                 embedding_service.embed_texts,
                 chunk_texts,
-                batch_size=16,
+                batch_size=32,
                 normalize=True
             )
 
             # Stage 6: Indexing document...
-            document_stage_tracker.set_stage(document_id, "indexing_document", 92, "Indexing document...")
+            document_stage_tracker.set_stage(document_id, "indexing_document", 95, "Indexing document...")
 
             # 3. Upsert into ChromaDB (offloaded to threadpool)
             await asyncio.to_thread(chroma_service.upsert_chunks, chunks, embeddings)
@@ -144,11 +144,14 @@ class IndexingService:
             doc_meta["indexed_chunks"] = len(chunks)
             doc_meta["indexed_at"] = now_iso
             doc_meta["user_id"] = user_id
+            doc_meta["status"] = "processed"
+            doc_meta["error_message"] = None
+            doc_meta["failed_stage"] = None
             all_meta[document_id] = doc_meta
             document_service._save_metadata(all_meta)
 
-            # Stage 7: Ready to chat
-            document_stage_tracker.set_stage(document_id, "ready", 100, "Ready to chat")
+            # Stage 7: Document ready!
+            document_stage_tracker.set_stage(document_id, "ready", 100, "Document ready!")
 
             logger.info(
                 f"Document '{document_id}' successfully indexed: {len(chunks)} chunks "
@@ -164,7 +167,15 @@ class IndexingService:
                 message="Document content successfully indexed into ChromaDB and BM25."
             )
         except Exception as e:
-            document_stage_tracker.set_stage(document_id, "failed", 0, "Indexing failed", error=str(e))
+            failed_stage = "Generating embeddings" if "embed" in str(e).lower() else "Indexing document"
+            document_stage_tracker.set_stage(
+                document_id, "failed", 0, "Processing failed", error=str(e), failed_stage=failed_stage
+            )
+            doc_meta["status"] = "failed"
+            doc_meta["failed_stage"] = failed_stage
+            doc_meta["error_message"] = str(e)
+            all_meta[document_id] = doc_meta
+            document_service._save_metadata(all_meta)
             raise
 
     def get_index_status(self, document_id: str, user_id: str = "default_user") -> IndexStatusResponse:

@@ -21,13 +21,16 @@ class TableExtractor:
         Text content in tables is natively and accurately extracted by page.get_text().
         """
         import os
-        if os.environ.get("ENABLE_HEAVY_TABLE_DETECTION", "0") != "1":
+        # Avoid heavy table detection if explicitly disabled, or in low-RAM environments without explicit opt-in
+        if os.environ.get("DISABLE_TABLE_DETECTION", "0") == "1":
+            return []
+        if os.environ.get("RENDER") and os.environ.get("ENABLE_HEAVY_TABLE_DETECTION", "0") != "1":
             return []
 
         extracted_tables: List[TableData] = []
         try:
             drawings = page.get_drawings()
-            if not drawings or len(drawings) < 2 or len(drawings) > 200:
+            if not drawings or len(drawings) > 250:
                 return []
 
             tabs = page.find_tables()

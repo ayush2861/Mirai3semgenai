@@ -13,6 +13,7 @@ export interface SourceReference {
 
 export type ProcessingStage =
   | 'uploading'
+  | 'validating'
   | 'extracting_text'
   | 'analyzing_pages'
   | 'chunking_document'
@@ -32,6 +33,7 @@ export interface AttachedDocument {
   stageLabel?: string;
   progress?: number;
   error_message?: string;
+  failed_stage?: string;
   fileObj?: File;
 }
 
