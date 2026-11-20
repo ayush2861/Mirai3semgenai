@@ -5,14 +5,9 @@ import {
   Minimize2,
   ExternalLink,
   Download,
-  FileText,
   Loader2,
   AlertCircle,
-  ArrowLeft,
-  Highlighter,
-  Copy,
-  Check,
-  Search
+  ArrowLeft
 } from 'lucide-react';
 import { getDocumentFileUrl } from '../api';
 
@@ -35,8 +30,8 @@ interface PdfViewerPanelProps {
 }
 
 /**
- * Extracts a clean 3 to 6 word search phrase from a citation snippet
- * to enable native PDFium / browser search highlighting and jumping.
+ * Extracts a clean 2 to 4 word search phrase from a citation snippet
+ * to enable native PDFium / browser search highlighting and jumping directly to the line.
  */
 function extractHighlightPhrase(snippet?: string): string {
   if (!snippet) return '';
@@ -54,7 +49,7 @@ function extractHighlightPhrase(snippet?: string): string {
   const words = clean.split(' ').filter(w => w.length > 0);
   if (words.length === 0) return '';
 
-  const takeWords = Math.min(words.length, 5);
+  const takeWords = Math.min(words.length, 4);
   return words.slice(0, takeWords).join(' ');
 }
 
@@ -70,16 +65,7 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [showSnippetBanner, setShowSnippetBanner] = useState(true);
-  const [copied, setCopied] = useState(false);
   const isDraggingRef = useRef(false);
-
-  // Re-open snippet banner when a new snippet is selected
-  useEffect(() => {
-    if (highlightSnippet) {
-      setShowSnippetBanner(true);
-    }
-  }, [highlightSnippet, pageNumber]);
 
   // Manage local Blob URL if a local File object is available
   useEffect(() => {
@@ -152,14 +138,6 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
     window.document.body.style.userSelect = 'none';
   };
 
-  const handleCopySnippet = () => {
-    if (highlightSnippet) {
-      navigator.clipboard.writeText(highlightSnippet);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   if (!doc) return null;
 
   // Resolve document ID (prioritizing real backend document_id over temporary frontend ID)
@@ -176,10 +154,11 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
 
   // Extract clean phrase for native search and line highlighting
   const highlightPhrase = extractHighlightPhrase(highlightSnippet);
+  const cleanPhrase = highlightPhrase.replace(/"/g, '');
 
   // Determine source URL: prefer instant local blobUrl if available, otherwise backend file stream
   const rawFileUrl = blobUrl || (docId ? getDocumentFileUrl(docId) : '');
-  const searchParam = highlightPhrase ? `&search=${encodeURIComponent(highlightPhrase)}` : '';
+  const searchParam = cleanPhrase ? `&search="${encodeURIComponent(cleanPhrase)}"` : '';
   const iframeSrc = rawFileUrl ? `${rawFileUrl}#page=${pageNumber || 1}${searchParam}&view=FitH` : '';
 
   return (
@@ -237,29 +216,10 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
               {docName}
             </span>
           </div>
-
-          {/* Current Page Badge */}
-          {pageNumber && (
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[11px] font-medium shrink-0 ml-1">
-              Page {pageNumber}
-            </span>
-          )}
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0 ml-2">
-          {highlightPhrase && (
-            <div
-              className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs"
-              title={`Highlighting: "${highlightPhrase}"`}
-            >
-              <Search size={12} className="text-amber-400 shrink-0" />
-              <span className="text-[11px] font-medium truncate max-w-[120px]">
-                {highlightPhrase}
-              </span>
-            </div>
-          )}
-
           {rawFileUrl && (
             <a
               href={rawFileUrl}
@@ -315,54 +275,7 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
         </div>
       </div>
 
-      {/* Floating Citation Excerpt Banner (Interactive Highlight Line HUD) */}
-      {showSnippetBanner && highlightSnippet && (
-        <div className="bg-[#17140B] border-b border-amber-500/35 px-4 py-2.5 shadow-lg z-20 shrink-0 transition-all animate-fadeIn">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start space-x-2.5 min-w-0">
-              <div className="w-6 h-6 rounded-md bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 mt-0.5 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
-                <Highlighter size={13} />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
-                    Cited Excerpt • Page {pageNumber || 1}
-                  </span>
-                  {highlightPhrase && (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 border border-amber-500/30 font-medium">
-                      Line: "{highlightPhrase}"
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-[#E5E5E5] leading-relaxed bg-[#201B0F] px-2.5 py-1.5 rounded border border-amber-500/25 italic font-normal line-clamp-3 select-text">
-                  "{highlightSnippet}"
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1.5 shrink-0 ml-2 mt-0.5">
-              <button
-                type="button"
-                onClick={handleCopySnippet}
-                className="flex items-center space-x-1 px-2.5 py-1 rounded bg-[#2A2314] hover:bg-[#382E1A] text-amber-300 hover:text-white text-xs font-medium border border-amber-500/30 transition-colors shadow-sm"
-                title="Copy cited excerpt text"
-              >
-                {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                <span>{copied ? 'Copied' : 'Copy'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowSnippetBanner(false)}
-                className="p-1 text-[#888888] hover:text-white hover:bg-[#2A2314] rounded transition-colors"
-                title="Dismiss highlight preview"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Viewer Body */}
+      {/* Viewer Body - Pure and Unobstructed */}
       <div className="relative flex-1 w-full h-full bg-[#0D0D0D] overflow-hidden">
         {isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0D0D0D] z-10 text-[#888888] space-y-2">
