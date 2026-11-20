@@ -94,9 +94,8 @@ class CitationValidator:
                     f"Not found in retrieved chunks!"
                 )
 
-        # If model hallucinated citations not present in retrieved context, strip them out
+        # Strip any lines that contain ungrounded or fabricated citations
         if fabricated_count > 0:
-            # Remove any citation lines that mention fabricated pages
             lines = cleaned_answer.split("\n")
             filtered_lines = []
             for line in lines:
@@ -104,7 +103,6 @@ class CitationValidator:
                 if m:
                     doc_cand = m.group(1).strip().lower()
                     page_cand = int(m.group(2))
-                    # If this specific line references an ungrounded page, discard line
                     cand_matched = any(
                         v_page == page_cand and (v_doc in doc_cand or doc_cand in v_doc)
                         for (v_doc, v_page) in valid_chunk_keys
@@ -114,16 +112,22 @@ class CitationValidator:
                 filtered_lines.append(line)
             cleaned_answer = "\n".join(filtered_lines).strip()
 
-        # Build final verified sources list
-        final_sources = list(unique_valid_sources.values())
+        # Completely strip verbose "Document Citations" and trailing raw citation lines from text
+        # (Citations are displayed cleanly via the compact Sources cards component)
+        cleaned_answer = re.sub(r"(?i)\n*#{0,4}\s*Document Citations[\s\S]*$", "", cleaned_answer).strip()
+        cleaned_answer = re.sub(
+            r"(?i)(?:\n*(?:\*\*Source:\*\*|Source:)\s*[^\n]+\n*(?:\*\*Page:\*\*|Page:)\s*\d+[\s\S]*)+$",
+            "",
+            cleaned_answer
+        ).strip()
+        cleaned_answer = re.sub(
+            r"(?i)(?:\n*[-*]\s*(?:\*\*Source:\*\*|Source:)\s*[^\n]+(?:\n*\s*(?:\*\*Page:\*\*|Page:)\s*\d+)?)+$",
+            "",
+            cleaned_answer
+        ).strip()
 
-        # Ensure structured citation section is appended cleanly if not already present
-        has_citations = "### document citations" in cleaned_answer.lower()
-        if not has_citations and final_sources:
-            citation_lines = ["\n\n### Document Citations"]
-            for s in final_sources:
-                citation_lines.append(f"- **Source:** `{s['document_name']}`  \n  **Page:** {s['page_number']}")
-            cleaned_answer += "\n" + "\n".join(citation_lines)
+        # Build final verified unique sources list
+        final_sources = list(unique_valid_sources.values())
 
         report = {
             "valid_citations": valid_claimed_count if claimed_citations else len(final_sources),

@@ -4,21 +4,25 @@ import { DocumentMetadata } from '../types';
 
 interface KnowledgeBaseModalProps {
   documents: DocumentMetadata[];
-  onOpenDocuments: () => void;
   onClose: () => void;
 }
 
 export const KnowledgeBaseModal: React.FC<KnowledgeBaseModalProps> = ({
   documents,
-  onOpenDocuments,
   onClose
 }) => {
   const totalPages = documents.reduce((acc, d) => acc + d.pages, 0);
   const totalChunks = documents.reduce((acc, d) => acc + d.chunks, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-2xl bg-[#141414] border border-[#262626] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-2xl bg-[#141414] border border-[#262626] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818]">
           <div className="flex items-center space-x-3">
@@ -87,18 +91,9 @@ export const KnowledgeBaseModal: React.FC<KnowledgeBaseModalProps> = ({
 
           <div className="flex items-center justify-between p-3.5 bg-[#181818] rounded-xl border border-[#262626]">
             <div>
-              <span className="text-sm font-medium text-white block">Need to index more documents?</span>
-              <span className="text-xs text-[#737373]">Upload new PDFs in the Document Management console</span>
+              <span className="text-sm font-medium text-white block">Need to query a runbook or architecture PDF?</span>
+              <span className="text-xs text-[#737373]">Attach your technical documents directly in the chat input using the (+) button</span>
             </div>
-            <button
-              onClick={() => {
-                onClose();
-                onOpenDocuments();
-              }}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-xs font-medium text-white rounded-lg transition-colors"
-            >
-              Manage Documents
-            </button>
           </div>
         </div>
 

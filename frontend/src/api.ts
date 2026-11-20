@@ -11,7 +11,8 @@ import {
   SettingsPayload,
   SourceReference,
   UserProfile,
-  AuthTokenResponse
+  AuthTokenResponse,
+  AttachedDocument
 } from './types';
 
 // Centralized API configuration supporting environment variables
@@ -103,14 +104,21 @@ export async function fetchHealth(): Promise<HealthStatus> {
  */
 export async function sendChatMessage(
   message: string,
-  conversationId?: string | null
-): Promise<{ conversation_id: string; message: ChatMessage; sources: SourceReference[] }> {
+  conversationId?: string | null,
+  documentIds?: string[]
+): Promise<{
+  conversation_id: string;
+  message: ChatMessage;
+  sources: SourceReference[];
+  attached_documents?: AttachedDocument[];
+}> {
   const res = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({
       message,
-      conversation_id: conversationId || null
+      conversation_id: conversationId || null,
+      document_ids: documentIds && documentIds.length > 0 ? documentIds : undefined
     })
   });
 
@@ -119,7 +127,7 @@ export async function sendChatMessage(
     throw new Error(err.error?.message || err.detail || `Chat request failed with status ${res.status}`);
   }
 
-  const data: ChatResponsePayload = await res.json();
+  const data: any = await res.json();
 
   const responseContent = data.answer || data.message || 
     `> **[InfraMind Backend Response]**\n>\n> Inquiry received and processed.\n>\n> **Status:** \`${data.status}\`\n> **Conversation ID:** \`${data.conversation_id}\``;
@@ -133,11 +141,35 @@ export async function sendChatMessage(
     status: data.status
   };
 
+  const attachedDocs: AttachedDocument[] = (data.attached_documents || []).map((d: any) => ({
+    id: d.document_id,
+    document_id: d.document_id,
+    name: d.document_name,
+    size_bytes: d.size_bytes,
+    isUploading: false
+  }));
+
   return {
     conversation_id: data.conversation_id,
     message: assistantMessage,
-    sources: (data.sources as SourceReference[]) || []
+    sources: (data.sources as SourceReference[]) || [],
+    attached_documents: attachedDocs
   };
+}
+
+/**
+ * Trigger ChromaDB and BM25 indexing for a document
+ */
+export async function indexDocument(documentId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/documents/${documentId}/index`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.detail || 'Failed to index document');
+  }
+  return res.json();
 }
 
 /**
@@ -261,73 +293,166 @@ export async function fetchDocumentChunks(documentId: string): Promise<any[]> {
   return res.json();
 }
 
-// Conversation client persistence (Phase 1 UI compatibility)
+// Persistent Conversation Backend API
 export async function fetchConversations(): Promise<ConversationSummary[]> {
   try {
-    const stored = localStorage.getItem('inframind_conversations');
-    if (stored) return JSON.parse(stored);
-  } catch (e) {}
+    const res = await fetch(`${API_BASE}/conversations`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return data.map((c: any) => ({
+          ...c,
+          documents: (c.documents || []).map((d: any) => ({
+            id: d.document_id,
+            document_id: d.document_id,
+            name: d.document_name,
+            size_bytes: d.size_bytes,
+            isUploading: false
+          }))
+        }));
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch backend conversations:', err);
+  }
 
-  return [
-    { id: "workspace-1", title: "Kubernetes Cluster Outage", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), message_count: 2 },
-    { id: "workspace-2", title: "Database Replication Lag", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), message_count: 2 },
-    { id: "workspace-3", title: "API Gateway Failure", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), message_count: 2 },
-    { id: "workspace-4", title: "Critical CPU Utilization", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), message_count: 2 },
-    { id: "workspace-5", title: "SLA & Service Credits", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), message_count: 2 },
-    { id: "workspace-6", title: "Network Latency Investigation", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), message_count: 2 }
-  ];
+  return [];
 }
 
 export async function fetchConversation(id: string): Promise<ConversationDetail> {
   try {
-    const stored = localStorage.getItem(`inframind_conv_${id}`);
-    if (stored) return JSON.parse(stored);
-  } catch (e) {}
+    const res = await fetch(`${API_BASE}/conversations/${id}`, {
+      headers: { ...getAuthHeaders() }
+    });
+    if (res.ok) {
+      const c = await res.json();
+      return {
+        ...c,
+        documents: (c.documents || []).map((d: any) => ({
+          id: d.document_id,
+          document_id: d.document_id,
+          name: d.document_name,
+          size_bytes: d.size_bytes,
+          isUploading: false
+        })),
+        messages: (c.messages || []).map((m: any) => ({
+          ...m,
+          sources: m.sources || [],
+          attachedFiles: (m.attached_files || []).map((d: any) => ({
+            id: d.document_id,
+            document_id: d.document_id,
+            name: d.document_name,
+            size_bytes: d.size_bytes,
+            isUploading: false
+          }))
+        }))
+      };
+    }
+  } catch (err) {
+    console.error(`Failed to fetch backend conversation ${id}:`, err);
+  }
 
   return {
     id,
-    title: id.replace('workspace-', 'Scenario '),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    messages: [
-      {
-        id: 'msg-1',
-        role: 'user',
-        content: `Operational verification procedure for ${id.replace('-', ' ')}`,
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'msg-2',
-        role: 'assistant',
-        content: `### SRE Runbook Context (${id})\n\nOperational procedure initialized in Phase 1. Ready for Phase 3 RAG integration.`,
-        timestamp: new Date().toISOString()
-      }
-    ]
-  };
-}
-
-export async function createConversation(): Promise<ConversationDetail> {
-  const newId = 'conv-' + Date.now();
-  const conv: ConversationDetail = {
-    id: newId,
     title: 'New Chat',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    documents: [],
     messages: []
   };
-  return conv;
+}
+
+export async function createConversation(title?: string, documentIds?: string[]): Promise<ConversationDetail> {
+  try {
+    const res = await fetch(`${API_BASE}/conversations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ title: title || 'New Chat', document_ids: documentIds || [] })
+    });
+    if (res.ok) {
+      const c = await res.json();
+      return {
+        ...c,
+        documents: (c.documents || []).map((d: any) => ({
+          id: d.document_id,
+          document_id: d.document_id,
+          name: d.document_name,
+          size_bytes: d.size_bytes,
+          isUploading: false
+        })),
+        messages: []
+      };
+    }
+  } catch (err) {
+    console.error('Failed to create backend conversation:', err);
+  }
+
+  const newId = 'conv-' + Date.now();
+  return {
+    id: newId,
+    title: title || 'New Chat',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    documents: [],
+    messages: []
+  };
 }
 
 export async function deleteConversation(id: string): Promise<void> {
   try {
-    localStorage.removeItem(`inframind_conv_${id}`);
-    const stored = localStorage.getItem('inframind_conversations');
-    if (stored) {
-      const list: ConversationSummary[] = JSON.parse(stored);
-      const filtered = list.filter(c => c.id !== id);
-      localStorage.setItem('inframind_conversations', JSON.stringify(filtered));
-    }
-  } catch (e) {}
+    await fetch(`${API_BASE}/conversations/${id}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeaders() }
+    });
+  } catch (err) {
+    console.error(`Failed to delete conversation ${id} on backend:`, err);
+  }
+}
+
+export async function attachDocumentToConversation(conversationId: string, documentId: string): Promise<ConversationDetail> {
+  const res = await fetch(`${API_BASE}/conversations/${conversationId}/documents/${documentId}`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || 'Failed to attach document to conversation');
+  }
+  const c = await res.json();
+  return {
+    ...c,
+    documents: (c.documents || []).map((d: any) => ({
+      id: d.document_id,
+      document_id: d.document_id,
+      name: d.document_name,
+      size_bytes: d.size_bytes,
+      isUploading: false
+    }))
+  };
+}
+
+export async function detachDocumentFromConversation(conversationId: string, documentId: string): Promise<ConversationDetail> {
+  const res = await fetch(`${API_BASE}/conversations/${conversationId}/documents/${documentId}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || 'Failed to detach document from conversation');
+  }
+  const c = await res.json();
+  return {
+    ...c,
+    documents: (c.documents || []).map((d: any) => ({
+      id: d.document_id,
+      document_id: d.document_id,
+      name: d.document_name,
+      size_bytes: d.size_bytes,
+      isUploading: false
+    }))
+  };
 }
 
 export async function fetchDocumentPage(docId: string, pageNumber: number) {

@@ -6,7 +6,7 @@ An enterprise-grade, autonomous AI assistant engineered for Site Reliability Eng
 
 ## 📌 Development Roadmap
 
-- [x] **Phase 1: Frontend UI & Experience** — High-fidelity ChatGPT Dark Interface (`#000000`), SRE workspaces, pill-shaped chat input, collapsible navigation, document management modals, and runbook directories.
+- [x] **Phase 1: Frontend UI & Experience** — High-fidelity Dark Interface (`#000000`), SRE workspaces, pill-shaped chat input, collapsible navigation, document management modals, and runbook directories.
 - [x] **Phase 2: Backend Architecture & Foundation** — Clean, modular FastAPI backend (`/api/v1`), Pydantic Settings, secure PDF upload validation with magic byte verification, centralized error handling, and automated pytest suite.
 - [x] **Phase 3: PDF Processing Engine** — Complete PyMuPDF extraction, SRE technical text cleaning, LangChain RecursiveCharacterTextSplitter chunking (1000/200), metadata preservation, and validation against the 50-page enterprise runbook.
 - [ ] **Phase 4: Vector Storage & Semantic Search** — ChromaDB embeddings, dense vector retrieval, and hybrid keyword ranking.

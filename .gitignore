@@ -49,6 +49,8 @@ backend/data/documents/
 # Generated application state
 backend/data/state.json
 backend/data/documents_index.json
+backend/data/conversations_index.json
+backend/data/users/
 
 # Frontend
 node_modules/

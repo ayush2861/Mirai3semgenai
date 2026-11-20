@@ -37,15 +37,18 @@ class AnswerFormatter:
 
         valid_sources = list(unique_sources.values())
 
-        # Check if model output already contains "Source:" and "Page:"
-        has_citations = ("source:" in cleaned_answer.lower() and "page:" in cleaned_answer.lower())
-
-        # If model did not append explicit citations and valid sources exist, append verified citation block
-        if not has_citations and valid_sources:
-            citation_lines = ["\n\n### Document Citations"]
-            for s in valid_sources:
-                citation_lines.append(f"- **Source:** `{s['document_name']}`  \n  **Page:** {s['page_number']}")
-            cleaned_answer += "\n" + "\n".join(citation_lines)
+        # Strip any verbose Document Citations or trailing raw citation blocks from text
+        cleaned_answer = re.sub(r"(?i)\n*#{0,4}\s*Document Citations[\s\S]*$", "", cleaned_answer).strip()
+        cleaned_answer = re.sub(
+            r"(?i)(?:\n*(?:\*\*Source:\*\*|Source:)\s*[^\n]+\n*(?:\*\*Page:\*\*|Page:)\s*\d+[\s\S]*)+$",
+            "",
+            cleaned_answer
+        ).strip()
+        cleaned_answer = re.sub(
+            r"(?i)(?:\n*[-*]\s*(?:\*\*Source:\*\*|Source:)\s*[^\n]+(?:\n*\s*(?:\*\*Page:\*\*|Page:)\s*\d+)?)+$",
+            "",
+            cleaned_answer
+        ).strip()
 
         return cleaned_answer, valid_sources
 

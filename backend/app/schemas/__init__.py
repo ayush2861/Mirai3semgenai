@@ -19,6 +19,14 @@ from app.schemas.universal_pdf import (
     UniversalProcessingStatus
 )
 
+from app.schemas.conversation import (
+    AttachedDocumentMeta,
+    ConversationMessage,
+    ConversationDetail,
+    ConversationSummary,
+    CreateConversationRequest
+)
+
 __all__ = [
     "ChatRequest",
     "ChatResponse",
@@ -34,6 +42,11 @@ __all__ = [
     "ProcessedPage",
     "DocumentAnalysis",
     "UniversalProcessingResponse",
-    "UniversalProcessingStatus"
+    "UniversalProcessingStatus",
+    "AttachedDocumentMeta",
+    "ConversationMessage",
+    "ConversationDetail",
+    "ConversationSummary",
+    "CreateConversationRequest"
 ]
 

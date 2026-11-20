@@ -11,6 +11,16 @@ export interface SourceReference {
   score: number;
 }
 
+export interface AttachedDocument {
+  id: string;
+  name: string;
+  size_bytes?: number;
+  document_id?: string;
+  isUploading?: boolean;
+  status?: 'uploading' | 'processing' | 'indexing' | 'ready' | 'failed';
+  error_message?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -18,6 +28,7 @@ export interface ChatMessage {
   timestamp: string;
   sources?: SourceReference[];
   status?: string;
+  attachedFiles?: AttachedDocument[];
 }
 
 export interface ChatRequestPayload {
@@ -99,6 +110,8 @@ export interface ConversationSummary {
   created_at: string;
   updated_at: string;
   message_count: number;
+  document_count?: number;
+  documents?: AttachedDocument[];
 }
 
 export interface ConversationDetail {
@@ -106,6 +119,7 @@ export interface ConversationDetail {
   title: string;
   created_at: string;
   updated_at: string;
+  documents?: AttachedDocument[];
   messages: ChatMessage[];
 }
 

@@ -13,6 +13,7 @@ class DocumentMetadata(BaseModel):
     size_bytes: int
     content_type: str = "application/pdf"
     status: str = "uploaded"
+    user_id: Optional[str] = "default_user"
     uploaded_at: str
 
 class DocumentDeleteResponse(BaseModel):

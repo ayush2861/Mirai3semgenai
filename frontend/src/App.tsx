@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ChatWorkspace } from './components/ChatWorkspace';
 import { SourceModal } from './components/SourceModal';
-import { DocumentsModal } from './components/DocumentsModal';
 import { RunbooksModal } from './components/RunbooksModal';
 import { IncidentsModal } from './components/IncidentsModal';
 import { KnowledgeBaseModal } from './components/KnowledgeBaseModal';
@@ -14,14 +13,19 @@ import {
   createConversation,
   deleteConversation,
   sendChatMessage,
-  fetchDocuments
+  fetchDocuments,
+  uploadDocument,
+  indexDocument,
+  attachDocumentToConversation,
+  detachDocumentFromConversation
 } from './api';
 import {
   ConversationSummary,
   ConversationDetail,
   ChatMessage,
   SourceReference,
-  DocumentMetadata
+  DocumentMetadata,
+  AttachedDocument
 } from './types';
 
 export const App: React.FC = () => {
@@ -33,15 +37,35 @@ export const App: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('inframind_sidebar_width');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 240 && parsed <= 720) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return 388;
+  });
+
+  const handleSidebarWidthChange = (newWidth: number) => {
+    setSidebarWidth(newWidth);
+    try {
+      localStorage.setItem('inframind_sidebar_width', newWidth.toString());
+    } catch {}
+  };
 
   // Modals state
   const [activeSource, setActiveSource] = useState<SourceReference | null>(null);
-  const [showDocumentsModal, setShowDocumentsModal] = useState(false);
   const [showRunbooksModal, setShowRunbooksModal] = useState(false);
   const [showIncidentsModal, setShowIncidentsModal] = useState(false);
   const [showKnowledgeModal, setShowKnowledgeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState<AttachedDocument[]>([]);
+  const [conversationDocuments, setConversationDocuments] = useState<AttachedDocument[]>([]);
 
   // Load conversations & documents
   const loadInitialData = useCallback(async () => {
@@ -68,6 +92,9 @@ export const App: React.FC = () => {
       setActiveConvId(conv.id);
       setActiveConversation(conv);
       setMessages(conv.messages);
+      // Restore persistent attached documents for this conversation
+      setConversationDocuments(conv.documents || []);
+      setPendingAttachments([]);
     } catch (err) {
       console.error('Failed to load conversation:', err);
     }
@@ -82,6 +109,112 @@ export const App: React.FC = () => {
     setActiveConversation(null);
     setMessages([]);
     setInput('');
+    setPendingAttachments([]);
+    setConversationDocuments([]);
+  };
+
+  const [isRefreshingChat, setIsRefreshingChat] = useState(false);
+
+  const handleRefreshChat = async () => {
+    if (isRefreshingChat) return;
+    setIsRefreshingChat(true);
+    const minWait = new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      if (activeConvId) {
+        await Promise.all([
+          loadConversation(activeConvId),
+          loadInitialData(),
+          minWait
+        ]);
+      } else {
+        await Promise.all([
+          loadInitialData(),
+          minWait
+        ]);
+      }
+    } catch (err) {
+      console.error('Failed to refresh chat data:', err);
+    } finally {
+      setIsRefreshingChat(false);
+    }
+  };
+
+  const handleAttachFile = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      return;
+    }
+    const tempId = `file-${Date.now()}`;
+    const newAttach: AttachedDocument = {
+      id: tempId,
+      name: file.name,
+      size_bytes: file.size,
+      status: 'uploading',
+      isUploading: true
+    };
+    setPendingAttachments(prev => [...prev, newAttach]);
+
+    try {
+      const uploadRes = await uploadDocument(file);
+      setPendingAttachments(prev =>
+        prev.map(f => (f.id === tempId ? { ...f, document_id: uploadRes.document_id, status: 'indexing' } : f))
+      );
+
+      await indexDocument(uploadRes.document_id);
+
+      const readyAttach: AttachedDocument = {
+        id: uploadRes.document_id,
+        document_id: uploadRes.document_id,
+        name: file.name,
+        size_bytes: file.size,
+        status: 'ready',
+        isUploading: false
+      };
+
+      setPendingAttachments(prev =>
+        prev.map(f => (f.id === tempId ? readyAttach : f))
+      );
+
+      // If already in an active conversation, persistently associate doc with this conversation
+      if (activeConvId) {
+        try {
+          await attachDocumentToConversation(activeConvId, uploadRes.document_id);
+          const updatedConv = await fetchConversation(activeConvId);
+          setConversationDocuments(updatedConv.documents || []);
+          const updatedConvs = await fetchConversations();
+          setConversations(updatedConvs);
+        } catch (ce) {
+          console.error('Failed to associate doc with conversation:', ce);
+        }
+      }
+
+      const updatedDocs = await fetchDocuments();
+      setDocuments(updatedDocs);
+    } catch (err: any) {
+      console.error('File upload failed:', err);
+      setPendingAttachments(prev =>
+        prev.map(f => (f.id === tempId ? { ...f, status: 'failed', isUploading: false, error_message: err.message || 'Upload failed' } : f))
+      );
+    }
+  };
+
+  const handleRemovePendingAttachment = (id: string) => {
+    setPendingAttachments(prev => prev.filter(f => f.id !== id));
+  };
+
+  const handleRemoveConversationDocument = async (id: string) => {
+    const fileToRemove = conversationDocuments.find(f => f.id === id || f.document_id === id);
+    const docId = fileToRemove?.document_id || id;
+    setConversationDocuments(prev => prev.filter(f => f.id !== id && f.document_id !== id));
+
+    if (activeConvId && docId) {
+      try {
+        await detachDocumentFromConversation(activeConvId, docId);
+        const updatedConvs = await fetchConversations();
+        setConversations(updatedConvs);
+      } catch (e) {
+        console.error('Failed to detach document on backend:', e);
+      }
+    }
   };
 
   const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
@@ -99,24 +232,52 @@ export const App: React.FC = () => {
   };
 
   const handleSend = async () => {
-    const trimmed = input.trim();
-    if (!trimmed || isLoading) return;
+    const isAnyPendingProcessing = pendingAttachments.some(
+      f => f.status === 'uploading' || f.status === 'indexing' || f.isUploading
+    );
+    if (isAnyPendingProcessing || isLoading) return;
 
+    const trimmed = input.trim();
+    if (!trimmed && pendingAttachments.length === 0 && conversationDocuments.length === 0) return;
+
+    const newDocIds = pendingAttachments
+      .map(f => f.document_id)
+      .filter((id): id is string => Boolean(id));
+
+    const promptText = trimmed || (pendingAttachments.length > 0
+      ? `Please analyze and summarize the attached document: ${pendingAttachments.map(f => f.name).join(', ')}`
+      : '');
+
+    // Snapshot pending attachments for user message bubble
+    const msgAttachments = pendingAttachments.length > 0 ? [...pendingAttachments] : undefined;
+
+    // Clear pending attachment immediately from the input box
+    setPendingAttachments([]);
     setInput('');
     setIsLoading(true);
 
     const tempUserMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: trimmed,
-      timestamp: new Date().toISOString()
+      content: promptText,
+      timestamp: new Date().toISOString(),
+      attachedFiles: msgAttachments
     };
     setMessages(prev => [...prev, tempUserMsg]);
 
     try {
-      const res = await sendChatMessage(trimmed, activeConvId || undefined);
+      const res = await sendChatMessage(
+        promptText,
+        activeConvId || undefined,
+        newDocIds.length > 0 ? newDocIds : undefined
+      );
       setMessages(prev => [...prev, res.message]);
       setActiveConvId(res.conversation_id);
+
+      // Persist attached files in conversation context so user can continue asking questions
+      if (res.attached_documents && res.attached_documents.length > 0) {
+        setConversationDocuments(res.attached_documents);
+      }
 
       // Refresh conversations list to update titles/timestamps
       const updatedConvs = await fetchConversations();
@@ -156,7 +317,6 @@ export const App: React.FC = () => {
       // Escape closes open modals
       if (e.key === 'Escape') {
         setActiveSource(null);
-        setShowDocumentsModal(false);
         setShowRunbooksModal(false);
         setShowIncidentsModal(false);
         setShowKnowledgeModal(false);
@@ -169,7 +329,7 @@ export const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-black text-[#F5F5F5] select-none font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-black text-[#F5F5F5] font-sans">
       {/* Left Sidebar */}
       <Sidebar
         conversations={conversations}
@@ -177,7 +337,6 @@ export const App: React.FC = () => {
         onSelectConversation={handleSelectConversation}
         onNewChat={handleNewChat}
         onDeleteConversation={handleDeleteConversation}
-        onOpenDocuments={() => setShowDocumentsModal(true)}
         onOpenRunbooks={() => setShowRunbooksModal(true)}
         onOpenIncidents={() => setShowIncidentsModal(true)}
         onOpenKnowledgeBase={() => setShowKnowledgeModal(true)}
@@ -185,10 +344,10 @@ export const App: React.FC = () => {
         onOpenSearch={() => setShowSearchModal(true)}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        width={sidebarWidth}
+        onWidthChange={handleSidebarWidthChange}
         activeNavView={
-          showDocumentsModal
-            ? 'documents'
-            : showRunbooksModal
+          showRunbooksModal
             ? 'runbooks'
             : showIncidentsModal
             ? 'incidents'
@@ -203,14 +362,20 @@ export const App: React.FC = () => {
         conversationTitle={activeConversation?.title || 'New Chat'}
         messages={messages}
         isLoading={isLoading}
+        isRefreshing={isRefreshingChat}
         input={input}
         setInput={setInput}
         onSend={handleSend}
-        onOpenDocuments={() => setShowDocumentsModal(true)}
         onOpenSource={(src) => setActiveSource(src)}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={() => setIsSidebarCollapsed(false)}
         onNewChat={handleNewChat}
+        onRefreshChat={handleRefreshChat}
+        pendingAttachments={pendingAttachments}
+        conversationDocuments={conversationDocuments}
+        onAttachFile={handleAttachFile}
+        onRemovePendingAttachment={handleRemovePendingAttachment}
+        onRemoveConversationDocument={handleRemoveConversationDocument}
       />
 
       {/* Modals & Overlays */}
@@ -219,14 +384,6 @@ export const App: React.FC = () => {
           source={activeSource}
           documents={documents}
           onClose={() => setActiveSource(null)}
-        />
-      )}
-
-      {showDocumentsModal && (
-        <DocumentsModal
-          documents={documents}
-          onRefresh={loadInitialData}
-          onClose={() => setShowDocumentsModal(false)}
         />
       )}
 
@@ -247,7 +404,6 @@ export const App: React.FC = () => {
       {showKnowledgeModal && (
         <KnowledgeBaseModal
           documents={documents}
-          onOpenDocuments={() => setShowDocumentsModal(true)}
           onClose={() => setShowKnowledgeModal(false)}
         />
       )}
@@ -260,8 +416,8 @@ export const App: React.FC = () => {
 
       {showSearchModal && (
         <SearchModal
+          conversations={conversations}
           onSelectConversation={handleSelectConversation}
-          onSelectRunbook={handleExecutePromptInChat}
           onClose={() => setShowSearchModal(false)}
         />
       )}

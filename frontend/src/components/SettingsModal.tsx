@@ -39,8 +39,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-xl bg-[#141414] border border-[#262626] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-xl bg-[#141414] border border-[#262626] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#181818]">
           <div className="flex items-center space-x-3">
@@ -159,20 +165,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   {k} Chunks
                 </button>
               ))}
-            </div>
-          </div>
-
-          {/* UI Color Scheme */}
-          <div className="pt-2 border-t border-[#262626]">
-            <span className="text-xs font-semibold text-[#A3A3A3] uppercase tracking-wider block mb-1">
-              Design Specification
-            </span>
-            <div className="p-3 bg-[#181818] rounded-xl border border-[#262626] flex items-center justify-between text-xs">
-              <span className="text-[#A3A3A3]">ChatGPT Minimal Dark Interface</span>
-              <span className="font-mono text-green-400 flex items-center space-x-1">
-                <CheckCircle2 size={13} />
-                <span>#000000 Enforced</span>
-              </span>
             </div>
           </div>
         </div>

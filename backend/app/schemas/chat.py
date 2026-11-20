@@ -19,4 +19,5 @@ class ChatResponse(BaseModel):
     message: str
     answer: Optional[str] = None
     sources: List[Any] = Field(default_factory=list)
+    attached_documents: List[Any] = Field(default_factory=list)
     status: str = "pending"

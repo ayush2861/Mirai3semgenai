@@ -56,12 +56,12 @@ export const DocumentsModal: React.FC<DocumentsModalProps> = ({
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Are you sure you want to delete and unindex this document?')) return;
     try {
       await deleteDocument(id);
       onRefresh();
     } catch (err: any) {
-      alert(err.message || 'Failed to delete');
+      setUploadError(err.message || 'Failed to delete document');
+      console.error('Delete error:', err);
     }
   };
 

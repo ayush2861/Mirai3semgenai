@@ -37,11 +37,7 @@ async def list_documents(
     """
     Retrieves metadata for all uploaded documents accessible to the user.
     """
-    all_docs = document_service.list_documents()
-    # Filter documents owned by the current user (or show all if admin/default)
-    if user_id in ("default_user", "user-admin-01"):
-        return all_docs
-    return [d for d in all_docs if getattr(d, "user_id", None) == user_id]
+    return document_service.list_documents(user_id=user_id)
 
 @router.get("/{document_id}", response_model=DocumentMetadata, status_code=status.HTTP_200_OK)
 async def get_document(
