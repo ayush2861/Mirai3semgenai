@@ -7,7 +7,7 @@ interface SourceModalProps {
   source: SourceReference | null;
   documents: DocumentMetadata[];
   onClose: () => void;
-  onOpenSidePanel?: (doc: { id: string; name: string }, page?: number) => void;
+  onOpenSidePanel?: (doc: { id: string; name: string }, page?: number, snippet?: string) => void;
 }
 
 export const SourceModal: React.FC<SourceModalProps> = ({
@@ -101,7 +101,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        onOpenSidePanel({ id: matchedDoc.id, name: matchedDoc.filename }, source.page_number);
+                        onOpenSidePanel({ id: matchedDoc.id, name: matchedDoc.filename }, source.page_number, source.snippet);
                         onClose();
                       }}
                       className="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center space-x-1 font-medium"

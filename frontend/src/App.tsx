@@ -73,6 +73,7 @@ export const App: React.FC = () => {
   // Split-panel PDF viewer state (matching Antigravity IDE layout)
   const [activePdfDoc, setActivePdfDoc] = useState<PdfViewerDocument | null>(null);
   const [activePdfPage, setActivePdfPage] = useState<number | undefined>(undefined);
+  const [activePdfSnippet, setActivePdfSnippet] = useState<string | undefined>(undefined);
   const [pdfPanelWidth, setPdfPanelWidth] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('inframind_pdf_panel_width');
@@ -88,14 +89,20 @@ export const App: React.FC = () => {
       : 600;
   });
 
-  const handleOpenPdfViewer = (doc: PdfViewerDocument, page?: number) => {
+  const handleOpenPdfViewer = (
+    doc: PdfViewerDocument,
+    page?: number,
+    snippet?: string
+  ) => {
     setActivePdfDoc(doc);
     setActivePdfPage(page);
+    setActivePdfSnippet(snippet);
   };
 
   const handleClosePdfViewer = () => {
     setActivePdfDoc(null);
     setActivePdfPage(undefined);
+    setActivePdfSnippet(undefined);
   };
 
   const handlePdfPanelWidthChange = (newWidth: number) => {
@@ -151,6 +158,7 @@ export const App: React.FC = () => {
     setConversationDocuments([]);
     setActivePdfDoc(null);
     setActivePdfPage(undefined);
+    setActivePdfSnippet(undefined);
   };
 
   const [isRefreshingChat, setIsRefreshingChat] = useState(false);
@@ -567,12 +575,31 @@ export const App: React.FC = () => {
         setInput={setInput}
         onSend={handleSend}
         onOpenSource={(src) => {
-          const matchedDoc = documents.find(d => d.filename === src.document_name);
-          if (matchedDoc) {
-            handleOpenPdfViewer({ id: matchedDoc.id, name: matchedDoc.filename }, src.page_number);
-          } else {
-            setActiveSource(src);
-          }
+          const srcDocId = (src as any).document_id;
+          const matchingAttached =
+            conversationDocuments.find(d =>
+              (srcDocId && (d.id === srcDocId || d.document_id === srcDocId)) ||
+              d.name === src.document_name ||
+              (d as any).document_name === src.document_name
+            ) ||
+            pendingAttachments.find(d =>
+              (srcDocId && (d.id === srcDocId || d.document_id === srcDocId)) ||
+              d.name === src.document_name
+            );
+
+          const matchedDoc = documents.find(d =>
+            (srcDocId && d.id === srcDocId) || d.filename === src.document_name
+          );
+
+          const resolvedDoc: PdfViewerDocument = {
+            id: srcDocId || matchedDoc?.id || matchingAttached?.document_id || matchingAttached?.id || src.document_name,
+            document_id: srcDocId || matchedDoc?.id || matchingAttached?.document_id,
+            name: src.document_name,
+            filename: src.document_name,
+            fileObj: matchingAttached?.fileObj
+          };
+
+          handleOpenPdfViewer(resolvedDoc, src.page_number, src.snippet);
         }}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={() => setIsSidebarCollapsed(false)}
@@ -592,6 +619,7 @@ export const App: React.FC = () => {
         <PdfViewerPanel
           doc={activePdfDoc}
           pageNumber={activePdfPage}
+          highlightSnippet={activePdfSnippet}
           onClose={handleClosePdfViewer}
           width={pdfPanelWidth}
           onWidthChange={handlePdfPanelWidthChange}
