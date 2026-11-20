@@ -81,7 +81,7 @@ class AuthService:
         except Exception:
             return False
 
-    def create_access_token(self, user_id: str, email: str, username: str) -> Tuple_Token:
+    def create_access_token(self, user_id: str, email: str, username: str) -> tuple[str, int]:
         expire_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         expires_at = datetime.now(timezone.utc) + expire_delta
 
