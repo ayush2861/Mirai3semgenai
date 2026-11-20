@@ -641,8 +641,6 @@ export const App: React.FC = () => {
           pageNumber={activePdfPage}
           highlightSnippet={activePdfSnippet}
           onClose={handleClosePdfViewer}
-          width={pdfPanelWidth}
-          onWidthChange={handlePdfPanelWidthChange}
         />
       )}
 

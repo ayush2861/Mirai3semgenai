@@ -25,8 +25,8 @@ interface PdfViewerPanelProps {
   pageNumber?: number;
   highlightSnippet?: string;
   onClose: () => void;
-  width: number;
-  onWidthChange: (newWidth: number) => void;
+  width?: number;
+  onWidthChange?: (newWidth: number) => void;
 }
 
 /**
@@ -58,14 +58,12 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
   pageNumber,
   highlightSnippet,
   onClose,
-  width,
-  onWidthChange
+  width = 640
 }) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const isDraggingRef = useRef(false);
 
   // Manage local Blob URL if a local File object is available
   useEffect(() => {
@@ -103,41 +101,6 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isMaximized, onClose]);
 
-  // Handle draggable left border resize
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current) return;
-      e.preventDefault();
-      const newWidth = window.innerWidth - e.clientX;
-      const minWidth = 360;
-      const maxWidth = Math.max(minWidth, window.innerWidth * 0.85);
-      const clamped = Math.max(minWidth, Math.min(maxWidth, newWidth));
-      onWidthChange(clamped);
-    };
-
-    const handleMouseUp = () => {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        window.document.body.style.cursor = '';
-        window.document.body.style.userSelect = '';
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [onWidthChange]);
-
-  const handleStartResize = (e: React.MouseEvent) => {
-    e.preventDefault();
-    isDraggingRef.current = true;
-    window.document.body.style.cursor = 'col-resize';
-    window.document.body.style.userSelect = 'none';
-  };
-
   if (!doc) return null;
 
   // Resolve document ID (prioritizing real backend document_id over temporary frontend ID)
@@ -164,24 +127,13 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
 
   return (
     <aside
-      style={{ width: isMaximized ? '100vw' : `${width}px` }}
+      style={{ width: isMaximized ? '100vw' : undefined }}
       className={`h-screen bg-[#111111] border-l border-[#222222] flex flex-col z-40 transition-all duration-150 ease-out shrink-0 select-none ${
         isMaximized
           ? 'fixed inset-0 z-50 w-screen h-screen max-w-[100vw] overflow-hidden'
-          : 'relative'
+          : 'relative w-[50vw] min-w-[420px] max-w-[65vw]'
       }`}
     >
-      {/* Draggable resize handle on left border (in split mode) */}
-      {!isMaximized && (
-        <div
-          onMouseDown={handleStartResize}
-          title="Drag to resize PDF viewer"
-          className="absolute -left-1.5 top-0 bottom-0 w-3 cursor-col-resize z-30 group flex items-center justify-center hover:bg-blue-500/20 transition-colors"
-        >
-          <div className="w-0.5 h-12 rounded-full bg-[#333333] group-hover:bg-blue-400 transition-colors" />
-        </div>
-      )}
-
       {/* Top Header Bar with prominent Back to Chat button */}
       <div className="h-14 w-full px-4 sm:px-6 flex items-center justify-between border-b border-[#1E1E1E] bg-[#141414] shrink-0 z-20">
         <div className="flex items-center space-x-2 min-w-0 pr-2">
