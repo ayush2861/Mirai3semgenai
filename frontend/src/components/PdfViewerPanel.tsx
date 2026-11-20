@@ -16,6 +16,8 @@ export interface PdfViewerDocument {
   document_id?: string;
   name?: string;
   filename?: string;
+  document_name?: string;
+  fileObj?: File | Blob;
 }
 
 interface PdfViewerPanelProps {
@@ -36,14 +38,29 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
   const [isMaximized, setIsMaximized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const isDraggingRef = useRef(false);
 
+  // Manage local Blob URL if a local File object is available
   useEffect(() => {
-    if (doc) {
+    if (doc?.fileObj) {
+      try {
+        const url = URL.createObjectURL(doc.fileObj);
+        setBlobUrl(url);
+        setIsLoading(true);
+        setHasError(false);
+        return () => {
+          URL.revokeObjectURL(url);
+        };
+      } catch (e) {
+        console.error('Failed to create object URL for file:', e);
+      }
+    } else {
+      setBlobUrl(null);
       setIsLoading(true);
       setHasError(false);
     }
-  }, [doc, pageNumber]);
+  }, [doc?.fileObj, doc?.id, doc?.document_id]);
 
   // Handle draggable left border resize
   useEffect(() => {
@@ -82,13 +99,21 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
 
   if (!doc) return null;
 
-  const docId = doc.id || doc.document_id;
-  const docName = doc.name || doc.filename || 'Document.pdf';
+  // Resolve document ID (prioritizing real backend document_id over temporary frontend ID)
+  const docId =
+    doc.document_id ||
+    (doc.id && !doc.id.startsWith('file-') ? doc.id : undefined);
 
-  if (!docId) return null;
+  // Resolve human-readable document name
+  const docName =
+    doc.name ||
+    doc.filename ||
+    doc.document_name ||
+    (doc.fileObj instanceof File ? doc.fileObj.name : 'Document.pdf');
 
-  const rawFileUrl = getDocumentFileUrl(docId);
-  const iframeSrc = `${rawFileUrl}#page=${pageNumber || 1}&view=FitH`;
+  // Determine source URL: prefer instant local blobUrl if available, otherwise backend file stream
+  const rawFileUrl = blobUrl || (docId ? getDocumentFileUrl(docId) : '');
+  const iframeSrc = rawFileUrl ? `${rawFileUrl}#page=${pageNumber || 1}&view=FitH` : '';
 
   return (
     <aside
@@ -130,24 +155,28 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center space-x-1 shrink-0">
-          <a
-            href={rawFileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Open in new window"
-            className="p-1.5 text-[#A3A3A3] hover:text-white hover:bg-[#222222] rounded-lg transition-colors"
-          >
-            <ExternalLink size={15} />
-          </a>
+          {rawFileUrl && (
+            <a
+              href={rawFileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open in new window"
+              className="p-1.5 text-[#A3A3A3] hover:text-white hover:bg-[#222222] rounded-lg transition-colors"
+            >
+              <ExternalLink size={15} />
+            </a>
+          )}
 
-          <a
-            href={rawFileUrl}
-            download={docName}
-            title="Download PDF"
-            className="p-1.5 text-[#A3A3A3] hover:text-white hover:bg-[#222222] rounded-lg transition-colors"
-          >
-            <Download size={15} />
-          </a>
+          {rawFileUrl && (
+            <a
+              href={rawFileUrl}
+              download={docName}
+              title="Download PDF"
+              className="p-1.5 text-[#A3A3A3] hover:text-white hover:bg-[#222222] rounded-lg transition-colors"
+            >
+              <Download size={15} />
+            </a>
+          )}
 
           <button
             type="button"
@@ -178,27 +207,30 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
           </div>
         )}
 
-        {hasError ? (
+        {hasError || !rawFileUrl ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6 text-[#A3A3A3] space-y-3">
             <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
               <AlertCircle size={20} />
             </div>
-            <div className="text-sm font-medium text-white">Could not display PDF inline</div>
+            <div className="text-sm font-medium text-white">Document is processing or unavailable</div>
             <p className="text-xs text-[#737373] max-w-sm">
-              Your browser may block embedded PDFs or the document is still processing.
+              Please wait while the PDF finishes uploading, or click below to retry opening the file.
             </p>
-            <a
-              href={rawFileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors"
-            >
-              <ExternalLink size={13} />
-              <span>Open in new tab</span>
-            </a>
+            {rawFileUrl && (
+              <a
+                href={rawFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors"
+              >
+                <ExternalLink size={13} />
+                <span>Open in new tab</span>
+              </a>
+            )}
           </div>
         ) : (
           <iframe
+            key={iframeSrc}
             src={iframeSrc}
             title={docName}
             onLoad={() => setIsLoading(false)}

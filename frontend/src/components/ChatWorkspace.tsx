@@ -86,32 +86,42 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   <span className="text-[#888888] font-normal hidden sm:inline">Active Context:</span>
                   <div className="flex items-center gap-1.5 max-w-[420px] overflow-x-auto no-scrollbar">
-                    {conversationDocuments.map((doc) => (
-                      <span
-                        key={doc.id || doc.document_id}
-                        onClick={() => onOpenDocument?.(doc)}
-                        className="inline-flex items-center space-x-1.5 bg-[#222222] text-[#E5E5E5] px-2 py-0.5 rounded-md text-[11px] font-medium border border-[#333333] cursor-pointer hover:bg-[#2C2C2C] hover:border-[#4F4F4F] hover:text-white transition-all group"
-                        title={`Click to view ${doc.name} in side panel`}
-                      >
-                        <span className="text-[8px] font-black tracking-wider px-1 py-0.2 rounded bg-[#DC2626] text-white">
-                          PDF
+                    {conversationDocuments.map((doc) => {
+                      const displayName = doc.name || (doc as any).document_name || 'Document.pdf';
+                      const docKey = doc.id || doc.document_id || displayName;
+                      return (
+                        <span
+                          key={docKey}
+                          onClick={() => onOpenDocument?.({
+                            id: doc.id || doc.document_id || displayName,
+                            document_id: doc.document_id || doc.id,
+                            name: displayName,
+                            document_name: displayName,
+                            fileObj: doc.fileObj
+                          })}
+                          className="inline-flex items-center space-x-1.5 bg-[#222222] text-[#E5E5E5] px-2 py-0.5 rounded-md text-[11px] font-medium border border-[#333333] cursor-pointer hover:bg-[#2C2C2C] hover:border-[#4F4F4F] hover:text-white transition-all group"
+                          title={`Click to view ${displayName} in side panel`}
+                        >
+                          <span className="text-[8px] font-black tracking-wider px-1 py-0.2 rounded bg-[#DC2626] text-white">
+                            PDF
+                          </span>
+                          <span className="truncate max-w-[130px] group-hover:underline underline-offset-2">{displayName}</span>
+                          {onRemoveConversationDocument && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRemoveConversationDocument(doc.id || doc.document_id || '');
+                              }}
+                              title={`Detach ${displayName} from conversation`}
+                              className="text-[#888888] hover:text-white p-0.5 rounded hover:bg-[#333333] transition-colors ml-0.5"
+                            >
+                              <X size={11} strokeWidth={2.5} />
+                            </button>
+                          )}
                         </span>
-                        <span className="truncate max-w-[130px] group-hover:underline underline-offset-2">{doc.name}</span>
-                        {onRemoveConversationDocument && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRemoveConversationDocument(doc.id || doc.document_id || '');
-                            }}
-                            title={`Detach ${doc.name} from conversation`}
-                            className="text-[#888888] hover:text-white p-0.5 rounded hover:bg-[#333333] transition-colors ml-0.5"
-                          >
-                            <X size={11} strokeWidth={2.5} />
-                          </button>
-                        )}
-                      </span>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

@@ -25,6 +25,7 @@ export type ProcessingStage =
 export interface AttachedDocument {
   id: string;
   name: string;
+  document_name?: string;
   size_bytes?: number;
   document_id?: string;
   isUploading?: boolean;

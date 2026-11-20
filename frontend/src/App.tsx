@@ -290,6 +290,16 @@ export const App: React.FC = () => {
 
         const uploadRes = await uploadDocument(file);
         docId = uploadRes.document_id;
+
+        // Immediately update pendingAttachments with the real backend document_id
+        setPendingAttachments(prev =>
+          prev.map(f => (f.id === tempId ? { ...f, id: docId!, document_id: docId, fileObj: file } : f))
+        );
+        setActivePdfDoc(prev =>
+          prev && (prev.id === tempId || prev.document_id === tempId)
+            ? { ...prev, id: docId!, document_id: docId, fileObj: file }
+            : prev
+        );
       }
 
       await pollPipelineStage(tempId, docId, file.name, file.size, file);
