@@ -58,12 +58,47 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
   pageNumber,
   highlightSnippet,
   onClose,
-  width = 640
+  width = 640,
+  onWidthChange
 }) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const isResizingRef = useRef(false);
+
+  // Robust iframe-safe resize handler
+  const handleStartResize = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    isResizingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const newWidth = window.innerWidth - moveEvent.clientX;
+      const minWidth = 360;
+      const maxWidth = Math.max(minWidth, window.innerWidth * 0.85);
+      const clamped = Math.max(minWidth, Math.min(maxWidth, newWidth));
+      if (onWidthChange) {
+        onWidthChange(clamped);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      isResizingRef.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [onWidthChange]);
 
   // Manage local Blob URL if a local File object is available
   useEffect(() => {
@@ -126,14 +161,35 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
   const iframeSrc = rawFileUrl ? `${rawFileUrl}#page=${pageNumber || 1}${searchParam}&view=FitH` : '';
 
   return (
-    <aside
-      style={{ width: isMaximized ? '100vw' : undefined }}
-      className={`h-screen bg-[#111111] border-l border-[#222222] flex flex-col z-40 transition-all duration-150 ease-out shrink-0 select-none ${
-        isMaximized
-          ? 'fixed inset-0 z-50 w-screen h-screen max-w-[100vw] overflow-hidden'
-          : 'relative w-[50vw] min-w-[420px] max-w-[65vw]'
-      }`}
-    >
+    <>
+      {/* Fullscreen blocker during drag resize to prevent iframe from trapping mouse events */}
+      {isResizing && (
+        <div className="fixed inset-0 z-50 cursor-col-resize select-none pointer-events-auto bg-transparent" />
+      )}
+
+      <aside
+        style={{ width: isMaximized ? '100vw' : `${width}px` }}
+        className={`h-screen bg-[#111111] border-l border-[#222222] flex flex-col z-40 shrink-0 select-none ${
+          isResizing ? 'transition-none' : 'transition-[width] duration-150 ease-out'
+        } ${
+          isMaximized
+            ? 'fixed inset-0 z-50 w-screen h-screen max-w-[100vw] overflow-hidden'
+            : 'relative'
+        }`}
+      >
+        {/* Draggable left border resize handle */}
+        {!isMaximized && (
+          <div
+            onMouseDown={handleStartResize}
+            className="absolute -left-2 top-0 bottom-0 w-4 cursor-col-resize z-40 group flex items-center justify-center select-none"
+          >
+            <div
+              className={`w-[2px] h-full transition-colors ${
+                isResizing ? 'bg-blue-500' : 'group-hover:bg-[#444444]'
+              }`}
+            />
+          </div>
+        )}
       {/* Top Header Bar with prominent Back to Chat button */}
       <div className="h-14 w-full px-4 sm:px-6 flex items-center justify-between border-b border-[#1E1E1E] bg-[#141414] shrink-0 z-20">
         <div className="flex items-center space-x-2 min-w-0 pr-2">
@@ -268,10 +324,12 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
               setIsLoading(false);
               setHasError(true);
             }}
+            style={{ pointerEvents: isResizing ? 'none' : 'auto' }}
             className="w-full h-full border-0 bg-[#0D0D0D]"
           />
         )}
       </div>
     </aside>
+  </>
   );
 };
