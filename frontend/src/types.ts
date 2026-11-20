@@ -142,3 +142,22 @@ export interface SettingsPayload {
   top_k_chunks: number;
   response_style: string;
 }
+
+export interface UserProfile {
+  user_id: string;
+  username: string;
+  email: string;
+  full_name?: string;
+  created_at: string;
+  is_active: boolean;
+}
+
+export interface AuthTokenResponse {
+  access_token: string;
+  token_type: string;
+  user_id: string;
+  email: string;
+  username: string;
+  full_name?: string;
+  expires_in: number;
+}

@@ -1,3 +1,4 @@
+import os
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -25,6 +26,7 @@ logger = logging.getLogger("inframind")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.APP_NAME} v{settings.VERSION} [{settings.APP_ENV}]")
+    logger.info(f"Storage Root: {settings.DATA_DIR} | ChromaDB: {settings.CHROMA_DIR}")
     yield
     logger.info(f"Shutting down {settings.APP_NAME}")
 
@@ -46,11 +48,16 @@ app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
 # CORS Configuration
+cors_origins = list(settings.ALLOWED_ORIGINS)
+if settings.FRONTEND_ORIGIN and settings.FRONTEND_ORIGIN not in cors_origins:
+    cors_origins.append(settings.FRONTEND_ORIGIN)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.onrender\.com" if settings.APP_ENV == "production" else None,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -64,5 +71,6 @@ async def root():
         "application": settings.APP_NAME,
         "version": settings.VERSION,
         "docs_url": "/docs",
-        "api_v1": settings.API_V1_PREFIX
+        "api_v1": settings.API_V1_PREFIX,
+        "environment": settings.APP_ENV
     }

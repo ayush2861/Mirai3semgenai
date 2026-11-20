@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, UploadFile, File, Header, Query, status
+from fastapi import APIRouter, UploadFile, File, Depends, Query, status
 from app.schemas.document import (
     DocumentUploadResponse,
     DocumentMetadata,
@@ -15,35 +15,38 @@ from app.schemas.search import IndexDocumentResponse, IndexStatusResponse
 from app.services.document_service import document_service
 from app.services.processing_service import processing_service
 from app.services.vector.indexing_service import indexing_service
+from app.api.deps import get_current_user_id
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
 @router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
-    x_user_id: str = Header("default_user", alias="X-User-ID")
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Validates, uploads, and stores a PDF document file with user ownership.
     Enforces PDF MIME type, magic bytes verification, and maximum upload size limit.
     """
-    return await document_service.save_uploaded_file(file, user_id=x_user_id)
+    return await document_service.save_uploaded_file(file, user_id=user_id)
 
 @router.get("", response_model=List[DocumentMetadata], status_code=status.HTTP_200_OK)
 async def list_documents(
-    x_user_id: str = Header("default_user", alias="X-User-ID")
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Retrieves metadata for all uploaded documents accessible to the user.
     """
     all_docs = document_service.list_documents()
-    # Filter by user if not default/admin
-    return [d for d in all_docs]
+    # Filter documents owned by the current user (or show all if admin/default)
+    if user_id in ("default_user", "user-admin-01"):
+        return all_docs
+    return [d for d in all_docs if getattr(d, "user_id", None) == user_id]
 
 @router.get("/{document_id}", response_model=DocumentMetadata, status_code=status.HTTP_200_OK)
 async def get_document(
     document_id: str,
-    x_user_id: str = Header("default_user", alias="X-User-ID")
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Retrieves metadata for a specific uploaded document by ID.
@@ -53,12 +56,12 @@ async def get_document(
 @router.delete("/{document_id}", response_model=DocumentDeleteResponse, status_code=status.HTTP_200_OK)
 async def delete_document(
     document_id: str,
-    x_user_id: str = Header("default_user", alias="X-User-ID")
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Safely deletes a document file, its metadata, processed chunk artifacts, and vector index.
     """
-    return document_service.delete_document(document_id, user_id=x_user_id)
+    return document_service.delete_document(document_id, user_id=user_id)
 
 @router.post("/{document_id}/process", response_model=DocumentProcessingResponse, status_code=status.HTTP_200_OK)
 async def process_document(document_id: str):
@@ -97,32 +100,30 @@ async def get_document_pages(document_id: str):
 async def index_document(
     document_id: str,
     reindex: bool = Query(False, description="Force reindexing if already indexed"),
-    x_user_id: str = Header("default_user", alias="X-User-ID")
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Indexes document into ChromaDB (vector embeddings) and BM25 (keyword index).
     Enforces user isolation and prevents unauthorized document indexing.
     """
-    return await indexing_service.index_document(document_id=document_id, user_id=x_user_id, reindex=reindex)
+    return await indexing_service.index_document(document_id=document_id, user_id=user_id, reindex=reindex)
 
 @router.get("/{document_id}/index-status", response_model=IndexStatusResponse, status_code=status.HTTP_200_OK)
 async def get_index_status(
     document_id: str,
-    x_user_id: str = Header("default_user", alias="X-User-ID")
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Retrieves the indexing status and indexed chunk count for a document in ChromaDB.
     """
-    return indexing_service.get_index_status(document_id=document_id, user_id=x_user_id)
+    return indexing_service.get_index_status(document_id=document_id, user_id=user_id)
 
 @router.delete("/{document_id}/index", status_code=status.HTTP_200_OK)
 async def delete_document_index(
     document_id: str,
-    x_user_id: str = Header("default_user", alias="X-User-ID")
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Deletes the document's vector embeddings from ChromaDB and purges its BM25 index.
     """
-    return indexing_service.delete_index(document_id=document_id, user_id=x_user_id)
-
-
+    return indexing_service.delete_index(document_id=document_id, user_id=user_id)

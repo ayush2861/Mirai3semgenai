@@ -1,0 +1,1828 @@
+{
+  "metadata": {
+    "timestamp": "2026-11-20 06:52:50 UTC",
+    "dataset": "InfraMind Phase 6 Multi-Domain QA Evaluation",
+    "eval_user": "eval_user_phase6",
+    "total_documents": 6,
+    "documents_tested": [
+      "business_quarterly_report.pdf",
+      "cloud_sla_terms.pdf",
+      "educational_operating_systems.pdf",
+      "research_ai_paper.pdf",
+      "scanned_compliance_certificate.pdf",
+      "tech_sre_runbook.pdf"
+    ],
+    "total_questions": 52,
+    "total_runtime_seconds": 129.47
+  },
+  "overall_metrics": {
+    "retrieval_recall_at_5": 100.0,
+    "retrieval_mrr": 96.43,
+    "overall_answer_accuracy": 73.08,
+    "numerical_accuracy": 80.0,
+    "citation_accuracy": 88.46,
+    "unsupported_question_rejection_rate": 60.0,
+    "average_response_time_ms": 2489.64
+  },
+  "category_breakdown": {
+    "factual": {
+      "questions": 8,
+      "accuracy_percentage": 100.0,
+      "avg_recall_at_5": 100.0,
+      "avg_mrr": 93.75,
+      "citation_accuracy": 100.0,
+      "avg_latency_ms": 1931.58
+    },
+    "numerical": {
+      "questions": 10,
+      "accuracy_percentage": 80.0,
+      "avg_recall_at_5": 100.0,
+      "avg_mrr": 95.0,
+      "citation_accuracy": 100.0,
+      "avg_latency_ms": 1471.57
+    },
+    "multi_page": {
+      "questions": 8,
+      "accuracy_percentage": 62.5,
+      "avg_recall_at_5": 100.0,
+      "avg_mrr": 100.0,
+      "citation_accuracy": 100.0,
+      "avg_latency_ms": 3027.74
+    },
+    "table_extraction": {
+      "questions": 8,
+      "accuracy_percentage": 62.5,
+      "avg_recall_at_5": 100.0,
+      "avg_mrr": 100.0,
+      "citation_accuracy": 100.0,
+      "avg_latency_ms": 3306.04
+    },
+    "summarization": {
+      "questions": 5,
+      "accuracy_percentage": 80.0,
+      "avg_recall_at_5": 100.0,
+      "avg_mrr": 100.0,
+      "citation_accuracy": 100.0,
+      "avg_latency_ms": 1679.86
+    },
+    "comparison": {
+      "questions": 3,
+      "accuracy_percentage": 66.67,
+      "avg_recall_at_5": 100.0,
+      "avg_mrr": 83.33,
+      "citation_accuracy": 100.0,
+      "avg_latency_ms": 2468.84
+    },
+    "unsupported": {
+      "questions": 10,
+      "accuracy_percentage": 60.0,
+      "avg_recall_at_5": 100.0,
+      "avg_mrr": 100.0,
+      "citation_accuracy": 40.0,
+      "avg_latency_ms": 3281.7
+    }
+  },
+  "detailed_results": [
+    {
+      "id": "eval_001",
+      "category": "factual",
+      "document": "tech_sre_runbook.pdf",
+      "question": "What is the exact CLI command to check PostgreSQL cluster health with Patroni?",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latency_ms": 1418.02,
+      "generated_answer_snippet": "To check the PostgreSQL cluster health using Patroni, execute the following CLI command:\n\n`patronictl -c /etc/patroni/db.yml list`\n\nSource: tech_sre_runbook.pdf..."
+    },
+    {
+      "id": "eval_002",
+      "category": "factual",
+      "document": "tech_sre_runbook.pdf",
+      "question": "What alert code triggers when Redis cache memory exceeds 92% capacity?",
+      "expected_pages": [
+        3
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latency_ms": 962.15,
+      "generated_answer_snippet": "The alert code that triggers when the Redis cache memory exceeds 92% capacity is `ERR_REDIS_OOM_EVICTION`.\n\nSource: tech_sre_runbook.pdf\nPage: 3\n\n\n### Document ..."
+    },
+    {
+      "id": "eval_003",
+      "category": "factual",
+      "document": "tech_sre_runbook.pdf",
+      "question": "What command is executed if a Kafka consumer rebalance storm occurs?",
+      "expected_pages": [
+        4
+      ],
+      "retrieved_sources_count": 5,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 5,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "latency_ms": 2668.63,
+      "generated_answer_snippet": "If a Kafka consumer rebalance storm occurs (defined as a heartbeat timeout greater than 30000ms), you should restart the consumer deployment using the following..."
+    },
+    {
+      "id": "eval_004",
+      "category": "factual",
+      "document": "research_ai_paper.pdf",
+      "question": "What sparse attention mechanism is proposed by the authors?",
+      "expected_pages": [
+        1
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1696.85,
+      "generated_answer_snippet": "The authors propose a mechanism called **DynaSparse-Attn**. \n\nKey technical details regarding this mechanism include:\n\n1.  **Mechanism Design**: It is a dynamic..."
+    },
+    {
+      "id": "eval_005",
+      "category": "factual",
+      "document": "research_ai_paper.pdf",
+      "question": "What open source license is the DynaSparse-Attn code released under?",
+      "expected_pages": [
+        3
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1029.41,
+      "generated_answer_snippet": "The DynaSparse-Attn source code is released under the Apache 2.0 license.\n\nSource: research_ai_paper.pdf\nPage: 3\n\n\n### Document Citations\n- **Source:** `researc..."
+    },
+    {
+      "id": "eval_006",
+      "category": "factual",
+      "document": "educational_operating_systems.pdf",
+      "question": "What x86 trap number corresponds to a Page Fault exception?",
+      "expected_pages": [
+        1
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 5481.28,
+      "generated_answer_snippet": "According to the provided documentation, a Page Fault exception corresponds to trap 14 in x86 architecture.\n\nSource: educational_operating_systems.pdf\nPage: 1\n\n..."
+    },
+    {
+      "id": "eval_007",
+      "category": "factual",
+      "document": "educational_operating_systems.pdf",
+      "question": "What anomaly occurs in FIFO page replacement where increasing frames increases faults?",
+      "expected_pages": [
+        3
+      ],
+      "retrieved_sources_count": 2,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.5,
+        "mrr": 0.5,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 2,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          3
+        ]
+      },
+      "latency_ms": 768.01,
+      "generated_answer_snippet": "In FIFO (First-In, First-Out) page replacement, the anomaly where increasing the number of available frames results in an increase in page faults is known as Be..."
+    },
+    {
+      "id": "eval_008",
+      "category": "factual",
+      "document": "scanned_compliance_certificate.pdf",
+      "question": "What is the certificate number on the compliance certificate?",
+      "expected_pages": [
+        1
+      ],
+      "retrieved_sources_count": 1,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 1,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1
+        ]
+      },
+      "latency_ms": 1428.28,
+      "generated_answer_snippet": "To determine the certificate number for the compliance certificate, please refer to the following step-by-step findings:\n\n1.  **Locate the Certificate Informati..."
+    },
+    {
+      "id": "eval_009",
+      "category": "numerical",
+      "document": "tech_sre_runbook.pdf",
+      "question": "What is the global service availability target percentage across rolling 30-day windows in TitanCloud?",
+      "expected_pages": [
+        1
+      ],
+      "retrieved_sources_count": 5,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 5,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "latency_ms": 906.76,
+      "generated_answer_snippet": "The global service availability target for TitanCloud is 99.95% uptime across rolling 30-day windows.\n\nSource: tech_sre_runbook.pdf\nPage: 1\n\n\n### Document Citat..."
+    },
+    {
+      "id": "eval_010",
+      "category": "numerical",
+      "document": "tech_sre_runbook.pdf",
+      "question": "What is the maximum allowable P99 API response latency under normal operating load?",
+      "expected_pages": [
+        1
+      ],
+      "retrieved_sources_count": 5,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 5,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "latency_ms": 1592.96,
+      "generated_answer_snippet": "The maximum allowable P99 API response latency under normal operating load is 150ms.\n\nSource: tech_sre_runbook.pdf\nPage: 1\n\n\n### Document Citations\n- **Source:*..."
+    },
+    {
+      "id": "eval_011",
+      "category": "numerical",
+      "document": "business_quarterly_report.pdf",
+      "question": "What was Apex Global's consolidated revenue for Q3 2026?",
+      "expected_pages": [
+        1
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1373.5,
+      "generated_answer_snippet": "Apex Global's consolidated revenue for Q3 2026 was $42.8M.\n\n**Step-by-step breakdown:**\n1. The \"Executive Overview\" section confirms that Apex Global recorded a..."
+    },
+    {
+      "id": "eval_012",
+      "category": "numerical",
+      "document": "business_quarterly_report.pdf",
+      "question": "What was the gross profit margin reported in Q3 2026?",
+      "expected_pages": [
+        1
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": true
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1050.64,
+      "generated_answer_snippet": "The gross profit margin reported for Q3 2026 was 71.4%.\n\n**Step-by-step verification:**\n1. The \"Key Financial Metrics\" section explicitly lists the \"Gross Profi..."
+    },
+    {
+      "id": "eval_013",
+      "category": "numerical",
+      "document": "business_quarterly_report.pdf",
+      "question": "What is the quarterly dividend per share declared by the board of directors?",
+      "expected_pages": [
+        3
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 902.94,
+      "generated_answer_snippet": "The board of directors has declared a quarterly dividend of $0.08 per share, which is payable on December 15, 2026.\n\nSource: business_quarterly_report.pdf\nPage:..."
+    },
+    {
+      "id": "eval_014",
+      "category": "numerical",
+      "document": "research_ai_paper.pdf",
+      "question": "What was the factual recall percentage retained by DynaSparse-Attn on technical troubleshooting benchmarks?",
+      "expected_pages": [
+        1
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 0.5,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 4184.7,
+      "generated_answer_snippet": "DynaSparse-Attn retains a factual recall of 99.4% on technical troubleshooting benchmarks.\n\nSource: research_ai_paper.pdf\nPage: 1\n\n\n### Document Citations\n- **S..."
+    },
+    {
+      "id": "eval_015",
+      "category": "numerical",
+      "document": "educational_operating_systems.pdf",
+      "question": "What is the typical access time of the Translation Lookaside Buffer (TLB)?",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1036.02,
+      "generated_answer_snippet": "The typical access time for a Translation Lookaside Buffer (TLB) is 1 nanosecond (1ns).\n\nSource: educational_operating_systems.pdf\nPage: 2\n\n\n### Document Citati..."
+    },
+    {
+      "id": "eval_016",
+      "category": "numerical",
+      "document": "educational_operating_systems.pdf",
+      "question": "In the lecture example with a 98% hit rate, what is the calculated Effective Access Time (EAT)?",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "token_coverage": 0.5,
+        "missing_tokens": [
+          "103ns"
+        ],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1694.28,
+      "generated_answer_snippet": "Based on the provided lecture materials, the Effective Access Time (EAT) is calculated as follows:\n\n**1. Parameters:**\n*   TLB Hit Rate: 98% (0.98)\n*   TLB Acce..."
+    },
+    {
+      "id": "eval_017",
+      "category": "numerical",
+      "document": "cloud_sla_terms.pdf",
+      "question": "What is the monthly fee per core for Enterprise Tier?",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latency_ms": 1048.18,
+      "generated_answer_snippet": "To determine the monthly fee per core for the Enterprise Tier, please refer to the following information:\n\n1.  **Locate the Service Tiers Table:** The \"Service ..."
+    },
+    {
+      "id": "eval_018",
+      "category": "numerical",
+      "document": "cloud_sla_terms.pdf",
+      "question": "What is the maximum cumulative Service Credit permitted in any single billing month?",
+      "expected_pages": [
+        3
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latency_ms": 925.73,
+      "generated_answer_snippet": "The maximum cumulative Service Credit permitted in any single billing month is 50% of the customer's total monthly recurring charge (MRC).\n\n**Source:** cloud_sl..."
+    },
+    {
+      "id": "eval_019",
+      "category": "multi_page",
+      "document": "tech_sre_runbook.pdf",
+      "question": "Explain the relationship between the global uptime target on page 1 and the SEV-1 incident target resolution time on page 5.",
+      "expected_pages": [
+        1,
+        5
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.5,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          4,
+          5
+        ]
+      },
+      "latency_ms": 1810.73,
+      "generated_answer_snippet": "Based on the provided documentation, the relationship between the global uptime target and the SEV-1 incident resolution time is defined by the following parame..."
+    },
+    {
+      "id": "eval_020",
+      "category": "multi_page",
+      "document": "tech_sre_runbook.pdf",
+      "question": "What is the maximum tolerable switchover downtime for PostgreSQL failover and what alert code is triggered if replication lag exceeds 100MB?",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 5,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 5,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "latency_ms": 1040.75,
+      "generated_answer_snippet": "Based on the provided documentation, here are the details regarding PostgreSQL operations:\n\n*   **Maximum Tolerable Switchover Downtime:** The maximum tolerable..."
+    },
+    {
+      "id": "eval_021",
+      "category": "multi_page",
+      "document": "business_quarterly_report.pdf",
+      "question": "Synthesize the Q3 2026 actual consolidated revenue with the expected full fiscal year 2026 revenue guidance.",
+      "expected_pages": [
+        1,
+        3
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.6667,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 8062.05,
+      "generated_answer_snippet": "To synthesize the Q3 2026 actual consolidated revenue with the full fiscal year 2026 revenue guidance, we look at the following data points:\n\n1.  **Q3 2026 Actu..."
+    },
+    {
+      "id": "eval_022",
+      "category": "multi_page",
+      "document": "business_quarterly_report.pdf",
+      "question": "How did Enterprise Cloud revenue on page 2 drive the overall company financial expansion on page 1?",
+      "expected_pages": [
+        1,
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.6667,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1687.88,
+      "generated_answer_snippet": "Enterprise Cloud revenue drove the overall company financial expansion through the following mechanisms:\n\n1.  **Primary Growth Contribution:** Enterprise Cloud ..."
+    },
+    {
+      "id": "eval_023",
+      "category": "multi_page",
+      "document": "research_ai_paper.pdf",
+      "question": "Explain how the dynamic sparse attention formulation in Section 1 connects to the benchmark results in Section 2.",
+      "expected_pages": [
+        1,
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.6667,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "token_coverage": 0.6667,
+        "missing_tokens": [
+          "O(N sqrt(N))"
+        ],
+        "hallucination_detected": true
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1828.49,
+      "generated_answer_snippet": "The dynamic sparse attention formulation (DynaSparse-Attn) described in Section 1 directly enables the performance metrics observed in the benchmark results in ..."
+    },
+    {
+      "id": "eval_024",
+      "category": "multi_page",
+      "document": "educational_operating_systems.pdf",
+      "question": "How does the MMU virtual page number translation connect to the Translation Lookaside Buffer performance calculation?",
+      "expected_pages": [
+        1,
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.6667,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 3402.0,
+      "generated_answer_snippet": "The connection between MMU virtual page number (VPN) translation and Translation Lookaside Buffer (TLB) performance is established through the hardware's relian..."
+    },
+    {
+      "id": "eval_025",
+      "category": "multi_page",
+      "document": "cloud_sla_terms.pdf",
+      "question": "For an Enterprise Tier customer who experiences uptime of 98.5%, what was their guaranteed uptime and what service credit percentage are they entitled to?",
+      "expected_pages": [
+        2,
+        3
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.5,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": true
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latency_ms": 3650.41,
+      "generated_answer_snippet": "To determine the guaranteed uptime and service credit for an Enterprise Tier customer with 98.5% uptime, we refer to the TitanCloud Service Level Agreement (SLA..."
+    },
+    {
+      "id": "eval_026",
+      "category": "multi_page",
+      "document": "cloud_sla_terms.pdf",
+      "question": "What constitutes downtime and how do the exclusion clauses limit SLA liability for API outages?",
+      "expected_pages": [
+        1,
+        4
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.5,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "token_coverage": 0.75,
+        "missing_tokens": [
+          "rate quotas"
+        ],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latency_ms": 2739.63,
+      "generated_answer_snippet": "Based on the provided documents, here is the technical definition of downtime and the associated SLA exclusion criteria:\n\n### Definition of Downtime\nDowntime is..."
+    },
+    {
+      "id": "eval_027",
+      "category": "table_extraction",
+      "document": "tech_sre_runbook.pdf",
+      "question": "According to the severity matrix table, what is the response SLA and target resolution for a SEV-2 incident?",
+      "expected_pages": [
+        5
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": true
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          5
+        ]
+      },
+      "latency_ms": 6245.98,
+      "generated_answer_snippet": "According to the SRE Incident Severity and Escalation Matrix, the requirements for a SEV-2 incident are as follows:\n\n*   **Response SLA:** 15 minutes\n*   **Targ..."
+    },
+    {
+      "id": "eval_028",
+      "category": "table_extraction",
+      "document": "tech_sre_runbook.pdf",
+      "question": "Who is the designated escalation contact for a SEV-1 incident in the severity matrix table?",
+      "expected_pages": [
+        5
+      ],
+      "retrieved_sources_count": 5,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "token_coverage": 0.0,
+        "missing_tokens": [
+          "VP Engineering"
+        ],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 0,
+        "cited_pages": []
+      },
+      "latency_ms": 6184.5,
+      "generated_answer_snippet": "Failed to generate answer from Gemini API: Gemini generation failed across all available models. Last error: 404 NOT_FOUND. {'error': {'code': 404, 'message': '..."
+    },
+    {
+      "id": "eval_029",
+      "category": "table_extraction",
+      "document": "business_quarterly_report.pdf",
+      "question": "According to the segment revenue table, what was the YoY revenue growth of Managed Security?",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "token_coverage": 0.0,
+        "missing_tokens": [
+          "+12.6%",
+          "12.6%"
+        ],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 0,
+        "cited_pages": []
+      },
+      "latency_ms": 5740.38,
+      "generated_answer_snippet": "Failed to generate answer from Gemini API: Gemini generation failed across all available models. Last error: 404 NOT_FOUND. {'error': {'code': 404, 'message': '..."
+    },
+    {
+      "id": "eval_030",
+      "category": "table_extraction",
+      "document": "business_quarterly_report.pdf",
+      "question": "Which business segment recorded negative YoY growth in Q3 2026 and by what percentage?",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 3375.38,
+      "generated_answer_snippet": "Based on the provided earnings report, the business segment that recorded negative year-over-year (YoY) growth in Q3 2026 is Professional Services.\n\n**Step-by-s..."
+    },
+    {
+      "id": "eval_031",
+      "category": "table_extraction",
+      "document": "business_quarterly_report.pdf",
+      "question": "What is the operating margin for the Enterprise Cloud business segment?",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 937.67,
+      "generated_answer_snippet": "The operating margin for the Enterprise Cloud business segment is 34.2%.\n\n**Step-by-step derivation:**\n1. Refer to the \"Revenue Breakdown by Business Segment\" t..."
+    },
+    {
+      "id": "eval_032",
+      "category": "table_extraction",
+      "document": "research_ai_paper.pdf",
+      "question": "In the benchmark table, what was the latency and VRAM footprint of DynaSparse-Attn?",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1413.89,
+      "generated_answer_snippet": "Based on the provided benchmark table, the performance metrics for DynaSparse-Attn are as follows:\n\n*   **Latency:** 68ms\n*   **VRAM Footprint:** 9.8GB\n\nSource:..."
+    },
+    {
+      "id": "eval_033",
+      "category": "table_extraction",
+      "document": "cloud_sla_terms.pdf",
+      "question": "In the service tiers table, compare the guaranteed uptime and support response SLA between Standard Tier and Enterprise Tier.",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latency_ms": 1430.0,
+      "generated_answer_snippet": "Based on the provided documentation, the comparison between the Standard Tier and the Enterprise Tier regarding guaranteed uptime and support response SLA is as..."
+    },
+    {
+      "id": "eval_034",
+      "category": "table_extraction",
+      "document": "cloud_sla_terms.pdf",
+      "question": "What is the disaster recovery RTO for Professional Tier in the service tiers table?",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latency_ms": 1120.56,
+      "generated_answer_snippet": "The disaster recovery RTO for the Professional Tier is 4 hours.\n\nSource: cloud_sla_terms.pdf\nPage: 2\n\n\n### Document Citations\n- **Source:** `cloud_sla_terms.pdf..."
+    },
+    {
+      "id": "eval_035",
+      "category": "summarization",
+      "document": "tech_sre_runbook.pdf",
+      "question": "Summarize the Redis cache troubleshooting procedure and constraints.",
+      "expected_pages": [
+        3
+      ],
+      "retrieved_sources_count": 5,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 5,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "latency_ms": 1895.11,
+      "generated_answer_snippet": "To troubleshoot the Redis cache cluster (`redis-session-prod.titancloud.internal`), follow these procedures and adhere to the specified constraints:\n\n### **Trou..."
+    },
+    {
+      "id": "eval_036",
+      "category": "summarization",
+      "document": "business_quarterly_report.pdf",
+      "question": "Summarize Apex Global's overall financial health and future capital expenditure allocation.",
+      "expected_pages": [
+        1,
+        3
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.6667,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1701.51,
+      "generated_answer_snippet": "Based on the provided Q3 2026 Earnings Report, Apex Global Technologies' financial health and future capital expenditure plans are summarized as follows:\n\n### *..."
+    },
+    {
+      "id": "eval_037",
+      "category": "summarization",
+      "document": "research_ai_paper.pdf",
+      "question": "Summarize the technical contributions and speedup achieved by DynaSparse-Attn.",
+      "expected_pages": [
+        1,
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.6667,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "token_coverage": 0.6667,
+        "missing_tokens": [
+          "O(N sqrt(N))"
+        ],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1968.04,
+      "generated_answer_snippet": "DynaSparse-Attn provides a dynamic sparse attention mechanism designed to address the quadratic attention complexity ($O(N^2)$) inherent in Transformer-based re..."
+    },
+    {
+      "id": "eval_038",
+      "category": "summarization",
+      "document": "educational_operating_systems.pdf",
+      "question": "Summarize the page replacement algorithms discussed in the lecture.",
+      "expected_pages": [
+        3
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1406.26,
+      "generated_answer_snippet": "Based on the provided lecture notes, the following page replacement algorithms are used when physical memory is full and a page fault occurs:\n\n*   **FIFO (First..."
+    },
+    {
+      "id": "eval_039",
+      "category": "summarization",
+      "document": "cloud_sla_terms.pdf",
+      "question": "Summarize the service credit claims procedure and maximum credit limits.",
+      "expected_pages": [
+        3
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latency_ms": 1428.38,
+      "generated_answer_snippet": "To claim service credits under the TitanCloud Service Level Agreement, the following procedure and limitations apply:\n\n### Service Credit Claims Procedure\n*   *..."
+    },
+    {
+      "id": "eval_040",
+      "category": "comparison",
+      "document": "cloud_sla_terms.pdf",
+      "question": "Compare the service credit penalty for Enterprise Tier versus Professional Tier when uptime falls below 98.0%.",
+      "expected_pages": [
+        3
+      ],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "mrr": 0.5,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": true
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 4,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "latency_ms": 2592.27,
+      "generated_answer_snippet": "To compare the service credit penalties for the Enterprise Tier and the Professional Tier when uptime falls below 98.0%, we refer to the Service Credits and Pen..."
+    },
+    {
+      "id": "eval_041",
+      "category": "comparison",
+      "document": "research_ai_paper.pdf",
+      "question": "Compare FlashAttention-v2 with DynaSparse-Attn in terms of context window and latency.",
+      "expected_pages": [
+        2
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 1178.74,
+      "generated_answer_snippet": "Based on the provided research paper, the comparison between FlashAttention-v2 and DynaSparse-Attn is as follows:\n\n*   **Context Window:**\n    *   **FlashAttent..."
+    },
+    {
+      "id": "eval_042",
+      "category": "comparison",
+      "document": "educational_operating_systems.pdf",
+      "question": "Compare the percentage weight of programming projects against the final exam in the course grading policy.",
+      "expected_pages": [
+        3
+      ],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 0.3333,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "token_coverage": 1.0,
+        "missing_tokens": [],
+        "hallucination_detected": false
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 3,
+        "invalid_citation_count": 0,
+        "cited_pages": [
+          1,
+          2,
+          3
+        ]
+      },
+      "latency_ms": 3635.52,
+      "generated_answer_snippet": "Based on the provided course grading distribution, the percentage weights are as follows:\n\n1.  **Programming Projects:** The course includes 4 programming proje..."
+    },
+    {
+      "id": "eval_043",
+      "category": "unsupported",
+      "document": "tech_sre_runbook.pdf",
+      "question": "What is the quantum encryption protocol used to secure Redis cluster traffic?",
+      "expected_pages": [],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "correct_refusal": true,
+        "hallucination_detected": false,
+        "token_coverage": 1.0,
+        "missing_tokens": []
+      },
+      "citation_metrics": {
+        "citation_accuracy": 0.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 1
+      },
+      "latency_ms": 911.95,
+      "generated_answer_snippet": "I couldn't find sufficient information in the selected PDF documents to answer this question reliably.\n\n\n### Document Citations\n- **Source:** `tech_sre_runbook...."
+    },
+    {
+      "id": "eval_044",
+      "category": "unsupported",
+      "document": "business_quarterly_report.pdf",
+      "question": "What is the CEO's personal home address and private mobile phone number?",
+      "expected_pages": [],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "correct_refusal": true,
+        "hallucination_detected": false,
+        "token_coverage": 1.0,
+        "missing_tokens": []
+      },
+      "citation_metrics": {
+        "citation_accuracy": 0.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 1
+      },
+      "latency_ms": 904.15,
+      "generated_answer_snippet": "I couldn't find sufficient information in the selected PDF documents to answer this question reliably.\n\n\n### Document Citations\n- **Source:** `business_quarterl..."
+    },
+    {
+      "id": "eval_045",
+      "category": "unsupported",
+      "document": "business_quarterly_report.pdf",
+      "question": "How many shares of stock were repurchased in the European market in 2021?",
+      "expected_pages": [],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "correct_refusal": true,
+        "hallucination_detected": false,
+        "token_coverage": 1.0,
+        "missing_tokens": []
+      },
+      "citation_metrics": {
+        "citation_accuracy": 0.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 1
+      },
+      "latency_ms": 5700.16,
+      "generated_answer_snippet": "I couldn't find sufficient information in the selected PDF documents to answer this question reliably.\n\n\n### Document Citations\n- **Source:** `business_quarterl..."
+    },
+    {
+      "id": "eval_046",
+      "category": "unsupported",
+      "document": "research_ai_paper.pdf",
+      "question": "What is the biological neural structure of the human visual cortex according to the paper?",
+      "expected_pages": [],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "correct_refusal": true,
+        "hallucination_detected": false,
+        "token_coverage": 1.0,
+        "missing_tokens": []
+      },
+      "citation_metrics": {
+        "citation_accuracy": 0.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 1
+      },
+      "latency_ms": 647.88,
+      "generated_answer_snippet": "I couldn't find sufficient information in the selected PDF documents to answer this question reliably.\n\n\n### Document Citations\n- **Source:** `research_ai_paper..."
+    },
+    {
+      "id": "eval_047",
+      "category": "unsupported",
+      "document": "educational_operating_systems.pdf",
+      "question": "Which specific brand of SSD does Professor Zhang recommend purchasing for personal gaming laptops?",
+      "expected_pages": [],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "correct_refusal": true,
+        "hallucination_detected": false,
+        "token_coverage": 1.0,
+        "missing_tokens": []
+      },
+      "citation_metrics": {
+        "citation_accuracy": 0.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 1
+      },
+      "latency_ms": 1198.88,
+      "generated_answer_snippet": "I couldn't find sufficient information in the selected PDF documents to answer this question reliably.\n\n\n### Document Citations\n- **Source:** `educational_opera..."
+    },
+    {
+      "id": "eval_048",
+      "category": "unsupported",
+      "document": "scanned_compliance_certificate.pdf",
+      "question": "What was the total annual revenue of Horizon Cybersecurity Auditors in 2024?",
+      "expected_pages": [],
+      "retrieved_sources_count": 1,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "correct_refusal": false,
+        "hallucination_detected": false,
+        "token_coverage": 0.0,
+        "missing_tokens": []
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 0
+      },
+      "latency_ms": 5603.09,
+      "generated_answer_snippet": "Failed to generate answer from Gemini API: Gemini generation failed across all available models. Last error: 404 NOT_FOUND. {'error': {'code': 404, 'message': '..."
+    },
+    {
+      "id": "eval_049",
+      "category": "unsupported",
+      "document": "cloud_sla_terms.pdf",
+      "question": "What is the refund policy for passenger airline flights cancelled due to volcanic ash clouds?",
+      "expected_pages": [],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": true,
+        "correct_refusal": true,
+        "hallucination_detected": false,
+        "token_coverage": 1.0,
+        "missing_tokens": []
+      },
+      "citation_metrics": {
+        "citation_accuracy": 0.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 1
+      },
+      "latency_ms": 897.34,
+      "generated_answer_snippet": "I couldn't find sufficient information in the selected PDF documents to answer this question reliably.\n\n\n### Document Citations\n- **Source:** `cloud_sla_terms.p..."
+    },
+    {
+      "id": "eval_050",
+      "category": "unsupported",
+      "document": "tech_sre_runbook.pdf",
+      "question": "What is the plaintext root password for the production PostgreSQL database server?",
+      "expected_pages": [],
+      "retrieved_sources_count": 3,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "correct_refusal": false,
+        "hallucination_detected": false,
+        "token_coverage": 0.0,
+        "missing_tokens": []
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 0
+      },
+      "latency_ms": 5597.62,
+      "generated_answer_snippet": "Failed to generate answer from Gemini API: Gemini generation failed across all available models. Last error: 404 NOT_FOUND. {'error': {'code': 404, 'message': '..."
+    },
+    {
+      "id": "eval_051",
+      "category": "unsupported",
+      "document": "cloud_sla_terms.pdf",
+      "question": "What is the weather forecast for the Dublin data center next Tuesday?",
+      "expected_pages": [],
+      "retrieved_sources_count": 4,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "correct_refusal": false,
+        "hallucination_detected": false,
+        "token_coverage": 0.0,
+        "missing_tokens": []
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 0
+      },
+      "latency_ms": 5612.04,
+      "generated_answer_snippet": "Failed to generate answer from Gemini API: Gemini generation failed across all available models. Last error: 404 NOT_FOUND. {'error': {'code': 404, 'message': '..."
+    },
+    {
+      "id": "eval_052",
+      "category": "unsupported",
+      "document": "educational_operating_systems.pdf",
+      "question": "How do you bake sourdough bread in an operating system laboratory oven?",
+      "expected_pages": [],
+      "retrieved_sources_count": 2,
+      "retrieval_metrics": {
+        "recall_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "mrr": 1.0,
+        "hit": 1.0
+      },
+      "quality_metrics": {
+        "is_correct": false,
+        "correct_refusal": false,
+        "hallucination_detected": false,
+        "token_coverage": 0.0,
+        "missing_tokens": []
+      },
+      "citation_metrics": {
+        "citation_accuracy": 1.0,
+        "valid_citation_count": 0,
+        "invalid_citation_count": 0
+      },
+      "latency_ms": 5743.85,
+      "generated_answer_snippet": "Failed to generate answer from Gemini API: Gemini generation failed across all available models. Last error: 404 NOT_FOUND. {'error': {'code': 404, 'message': '..."
+    }
+  ]
+}

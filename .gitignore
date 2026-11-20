@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 *.so
@@ -7,6 +8,8 @@ __pycache__/
 env/
 venv/
 ENV/
+backend/venv/
+.venv/
 build/
 develop-eggs/
 dist/
@@ -23,27 +26,41 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environment
-backend/venv/
-venv/
-
 # Environment variables
 .env
+.env.*
 .env.local
+!.env.example
 
-# Node
+# Generated vector database
+backend/data/chroma/
+
+# Uploaded documents
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+
+# Processed documents
+backend/data/processed/*
+!backend/data/processed/.gitkeep
+
+# User document storage
+backend/data/documents/
+
+# Generated application state
+backend/data/state.json
+backend/data/documents_index.json
+
+# Frontend
 node_modules/
+frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/
 *.local
 
-# Data / Uploads runtime artifacts
-backend/data/uploads/*
-!backend/data/uploads/.gitkeep
-backend/data/processed/*
-!backend/data/processed/.gitkeep
+# Logs
+*.log
 
-# IDEs
+# IDEs & OS
 .idea/
 .vscode/
 *.swp

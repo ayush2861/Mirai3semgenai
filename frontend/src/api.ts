@@ -9,11 +9,80 @@ import {
   IncidentRecord,
   RunbookItem,
   SettingsPayload,
-  SourceReference
+  SourceReference,
+  UserProfile,
+  AuthTokenResponse
 } from './types';
 
 // Centralized API configuration supporting environment variables
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+
+/**
+ * Authentication Helpers
+ */
+export function getAuthToken(): string | null {
+  return localStorage.getItem('inframind_token');
+}
+
+export function setAuthToken(token: string | null) {
+  if (token) {
+    localStorage.setItem('inframind_token', token);
+  } else {
+    localStorage.removeItem('inframind_token');
+  }
+}
+
+export function logoutUser() {
+  localStorage.removeItem('inframind_token');
+  localStorage.removeItem('inframind_user');
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export async function loginUser(email: string, password: string): Promise<AuthTokenResponse> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error?.message || 'Login failed');
+  }
+  const data: AuthTokenResponse = await res.json();
+  setAuthToken(data.access_token);
+  localStorage.setItem('inframind_user', JSON.stringify(data));
+  return data;
+}
+
+export async function registerUser(username: string, email: string, password: string, fullName?: string): Promise<AuthTokenResponse> {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, email, password, full_name: fullName })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error?.message || 'Registration failed');
+  }
+  const data: AuthTokenResponse = await res.json();
+  setAuthToken(data.access_token);
+  localStorage.setItem('inframind_user', JSON.stringify(data));
+  return data;
+}
+
+export async function fetchCurrentUser(): Promise<UserProfile> {
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    throw new Error('Unauthorized');
+  }
+  return res.json();
+}
 
 /**
  * Health Check API
@@ -29,7 +98,7 @@ export async function fetchHealth(): Promise<HealthStatus> {
 }
 
 /**
- * Chat API (Phase 2 validated endpoint)
+ * Chat API
  * Sends user infrastructure message to POST /api/v1/chat
  */
 export async function sendChatMessage(
@@ -38,7 +107,7 @@ export async function sendChatMessage(
 ): Promise<{ conversation_id: string; message: ChatMessage; sources: SourceReference[] }> {
   const res = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({
       message,
       conversation_id: conversationId || null
@@ -47,15 +116,13 @@ export async function sendChatMessage(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Chat request failed with status ${res.status}`);
+    throw new Error(err.error?.message || err.detail || `Chat request failed with status ${res.status}`);
   }
 
   const data: ChatResponsePayload = await res.json();
 
-  // In Phase 2, backend returns status: "pending" and answer: null
-  // Display transparent, honest pending status per Phase 2 instructions
-  const responseContent = data.answer || 
-    `> **[Phase 2 Backend Response]**\n>\n> Inquiry received and validated successfully by **${API_BASE}/chat**.\n>\n> **Status:** \`${data.status}\`\n> **Conversation ID:** \`${data.conversation_id}\`\n>\n> *AI reasoning and RAG vector retrieval will be connected in Phase 3.*`;
+  const responseContent = data.answer || data.message || 
+    `> **[InfraMind Backend Response]**\n>\n> Inquiry received and processed.\n>\n> **Status:** \`${data.status}\`\n> **Conversation ID:** \`${data.conversation_id}\``;
 
   const assistantMessage: ChatMessage = {
     id: data.conversation_id + '-' + Date.now(),
@@ -83,12 +150,13 @@ export async function uploadDocument(file: File): Promise<DocumentUploadResponse
 
   const res = await fetch(`${API_BASE}/documents/upload`, {
     method: 'POST',
+    headers: { ...getAuthHeaders() },
     body: formData
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Failed to upload document (HTTP ${res.status})`);
+    throw new Error(err.error?.message || err.detail || `Failed to upload document (HTTP ${res.status})`);
   }
 
   return res.json();
@@ -99,10 +167,12 @@ export async function uploadDocument(file: File): Promise<DocumentUploadResponse
  * Retrieves all uploaded documents from GET /api/v1/documents
  */
 export async function fetchDocuments(): Promise<DocumentMetadata[]> {
-  const res = await fetch(`${API_BASE}/documents`);
+  const res = await fetch(`${API_BASE}/documents`, {
+    headers: { ...getAuthHeaders() }
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || 'Failed to fetch documents');
+    throw new Error(err.error?.message || err.detail || 'Failed to fetch documents');
   }
   const rawList = await res.json();
   // Map fields for UI compatibility
@@ -119,10 +189,12 @@ export async function fetchDocuments(): Promise<DocumentMetadata[]> {
  * Retrieves a single document metadata from GET /api/v1/documents/{document_id}
  */
 export async function fetchDocument(documentId: string): Promise<DocumentMetadata> {
-  const res = await fetch(`${API_BASE}/documents/${documentId}`);
+  const res = await fetch(`${API_BASE}/documents/${documentId}`, {
+    headers: { ...getAuthHeaders() }
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || 'Failed to fetch document');
+    throw new Error(err.error?.message || err.detail || 'Failed to fetch document');
   }
   const doc = await res.json();
   return {
@@ -139,11 +211,12 @@ export async function fetchDocument(documentId: string): Promise<DocumentMetadat
  */
 export async function deleteDocument(documentId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/documents/${documentId}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() }
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || 'Failed to delete document');
+    throw new Error(err.error?.message || err.detail || 'Failed to delete document');
   }
 }
 
@@ -153,7 +226,8 @@ export async function deleteDocument(documentId: string): Promise<void> {
  */
 export async function processDocument(documentId: string): Promise<any> {
   const res = await fetch(`${API_BASE}/documents/${documentId}/process`, {
-    method: 'POST'
+    method: 'POST',
+    headers: { ...getAuthHeaders() }
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
