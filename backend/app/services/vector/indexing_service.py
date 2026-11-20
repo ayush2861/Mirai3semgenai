@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
@@ -81,8 +82,9 @@ class IndexingService:
         if not pages:
             raise DocumentProcessingError(f"No processed page content available for document '{document_id}'.")
 
-        # 1. Generate intelligent chunks
-        chunks = intelligent_chunker.chunk_processed_pages(
+        # 1. Generate intelligent chunks (offloaded to threadpool)
+        chunks = await asyncio.to_thread(
+            intelligent_chunker.chunk_processed_pages,
             document_id=document_id,
             document_name=doc_meta["filename"],
             user_id=user_id,
@@ -92,13 +94,18 @@ class IndexingService:
         if not chunks:
             raise DocumentProcessingError(f"Document '{document_id}' produced 0 chunks for indexing.")
 
-        # 2. Batch generate embeddings using local all-MiniLM-L6-v2
+        # 2. Batch generate embeddings using local all-MiniLM-L6-v2 (offloaded to threadpool)
         logger.info(f"Generating embeddings for {len(chunks)} chunks of document '{doc_meta['filename']}'...")
         chunk_texts = [c.content for c in chunks]
-        embeddings = embedding_service.embed_texts(chunk_texts, batch_size=32, normalize=True)
+        embeddings = await asyncio.to_thread(
+            embedding_service.embed_texts,
+            chunk_texts,
+            batch_size=16,
+            normalize=True
+        )
 
-        # 3. Upsert into ChromaDB
-        chroma_service.upsert_chunks(chunks, embeddings)
+        # 3. Upsert into ChromaDB (offloaded to threadpool)
+        await asyncio.to_thread(chroma_service.upsert_chunks, chunks, embeddings)
 
         # 4. Register in in-memory BM25 index
         chunk_dicts = [

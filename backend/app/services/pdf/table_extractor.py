@@ -26,6 +26,13 @@ class TableExtractor:
         extracted_tables: List[TableData] = []
 
         try:
+            # Memory and CPU guard for low-resource environments (Render 512MB RAM):
+            # Line-based table detection requires vector line paths.
+            # Skip find_tables() if page has no line drawings or excessive vector paths.
+            drawings = page.get_drawings()
+            if not drawings or len(drawings) < 2 or len(drawings) > 800:
+                return []
+
             tabs = page.find_tables()
             if not tabs or tabs.tables is None:
                 return []

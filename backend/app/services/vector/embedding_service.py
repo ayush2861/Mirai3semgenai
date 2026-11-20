@@ -105,6 +105,8 @@ class EmbeddingService:
                     raw_batch = self._model(chunk_slice)
                     for vec in raw_batch:
                         all_results.append([float(x) for x in vec])
+                import gc
+                gc.collect()
                 return all_results
             else:
                 embeddings = self._model.encode(

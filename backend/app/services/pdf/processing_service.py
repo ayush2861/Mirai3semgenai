@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -83,8 +84,9 @@ class UniversalProcessingService:
         now_iso = datetime.now(timezone.utc).isoformat()
 
         try:
-            # 1. Run Universal PDF extraction
-            processed_pages, analysis = universal_pdf_extractor.extract_document(
+            # 1. Run Universal PDF extraction offloaded to worker thread (prevents event loop starvation)
+            processed_pages, analysis = await asyncio.to_thread(
+                universal_pdf_extractor.extract_document,
                 file_path=file_path,
                 document_id=document_id,
                 document_name=doc_meta["filename"]

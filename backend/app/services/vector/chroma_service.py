@@ -73,13 +73,17 @@ class ChromaService:
             for c in chunks
         ]
 
-        # Chroma upsert ensures idempotency
-        self.collection.upsert(
-            ids=ids,
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas
-        )
+        # Chroma upsert in mini-batches to conserve memory on 512MB RAM instances
+        batch_size = 20
+        for i in range(0, len(chunks), batch_size):
+            self.collection.upsert(
+                ids=ids[i:i + batch_size],
+                embeddings=embeddings[i:i + batch_size],
+                documents=documents[i:i + batch_size],
+                metadatas=metadatas[i:i + batch_size]
+            )
+        import gc
+        gc.collect()
 
         logger.info(f"Upserted {len(chunks)} chunks into Chroma collection '{self.collection_name}'.")
         return len(chunks)
