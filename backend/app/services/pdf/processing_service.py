@@ -27,6 +27,7 @@ from app.schemas.universal_pdf import (
 from app.services.document_service import document_service
 from app.services.pdf.pdf_extractor import universal_pdf_extractor
 from app.services.text_chunker import text_chunker
+from app.services.stage_tracker import document_stage_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,9 @@ class UniversalProcessingService:
         now_iso = datetime.now(timezone.utc).isoformat()
 
         try:
+            # Stage 2: Extracting text...
+            document_stage_tracker.set_stage(document_id, "extracting_text", 30, "Extracting text...")
+
             # 1. Run Universal PDF extraction offloaded to worker thread (prevents event loop starvation)
             processed_pages, analysis = await asyncio.to_thread(
                 universal_pdf_extractor.extract_document,
@@ -91,6 +95,9 @@ class UniversalProcessingService:
                 document_id=document_id,
                 document_name=doc_meta["filename"]
             )
+
+            # Stage 3: Analyzing pages...
+            document_stage_tracker.set_stage(document_id, "analyzing_pages", 48, "Analyzing pages...")
 
             # 2. Chunk text with LangChain RecursiveCharacterTextSplitter
             # Map ProcessedPage to ExtractedPage for text_chunker compatibility
@@ -104,6 +111,9 @@ class UniversalProcessingService:
                 )
                 for p in processed_pages
             ]
+
+            # Stage 4: Chunking document...
+            document_stage_tracker.set_stage(document_id, "chunking_document", 62, "Chunking document...")
 
             chunks = text_chunker.chunk_document(
                 document_id=document_id,
@@ -191,6 +201,7 @@ class UniversalProcessingService:
             )
 
         except (FileCorruptedError, FileEncryptedError) as e:
+            document_stage_tracker.set_stage(document_id, "failed", 0, "Processing failed", error=e.message)
             doc_meta["status"] = "failed"
             doc_meta["error_message"] = e.message
             all_meta[document_id] = doc_meta
@@ -198,8 +209,10 @@ class UniversalProcessingService:
             raise e
         except Exception as e:
             logger.error(f"Unexpected processing error for document {document_id}: {e}")
+            err_msg = f"An error occurred during universal processing: {str(e)}"
+            document_stage_tracker.set_stage(document_id, "failed", 0, "Processing failed", error=err_msg)
             doc_meta["status"] = "failed"
-            doc_meta["error_message"] = f"An error occurred during universal processing: {str(e)}"
+            doc_meta["error_message"] = err_msg
             all_meta[document_id] = doc_meta
             document_service._save_metadata(all_meta)
             raise DocumentProcessingError(doc_meta["error_message"])

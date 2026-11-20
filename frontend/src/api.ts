@@ -281,6 +281,29 @@ export async function fetchProcessingStatus(documentId: string): Promise<any> {
   return res.json();
 }
 
+export interface DocumentStageInfo {
+  document_id: string;
+  stage: 'uploading' | 'extracting_text' | 'analyzing_pages' | 'chunking_document' | 'generating_embeddings' | 'indexing_document' | 'ready' | 'failed';
+  progress: number;
+  message: string;
+  error?: string | null;
+  updated_at?: string;
+}
+
+/**
+ * Real-time granular processing stage API
+ */
+export async function fetchDocumentStage(documentId: string): Promise<DocumentStageInfo> {
+  const res = await fetch(`${API_BASE}/documents/${documentId}/stage`, {
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.detail || 'Failed to fetch document stage');
+  }
+  return res.json();
+}
+
 /**
  * Phase 3: Document Chunks Retrieval API
  */

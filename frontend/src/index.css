@@ -269,3 +269,45 @@
 .mascot-avatar-glowing {
   animation: mascotAvatarGlow 2.8s infinite ease-in-out;
 }
+
+/* PDF Upload & Indexing Full-Square Animation */
+@keyframes pdfScrollLoop {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+.animate-pdf-scroll {
+  animation: pdfScrollLoop 4.2s linear infinite;
+}
+
+@keyframes fadeInStage {
+  from {
+    opacity: 0;
+    transform: translateY(1.5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeInStage 0.25s ease-out forwards;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 1.5s infinite ease-in-out;
+}

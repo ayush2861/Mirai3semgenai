@@ -22,6 +22,7 @@ interface ChatWorkspaceProps {
   conversationDocuments?: AttachedDocument[];
   onAttachFile?: (file: File) => Promise<void>;
   onRemovePendingAttachment?: (id: string) => void;
+  onRetryAttachment?: (id: string) => void;
   onRemoveConversationDocument?: (id: string) => void;
 }
 
@@ -42,6 +43,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   conversationDocuments = [],
   onAttachFile,
   onRemovePendingAttachment,
+  onRetryAttachment,
   onRemoveConversationDocument
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -157,6 +159,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             pendingAttachments={pendingAttachments}
             onAttachFile={onAttachFile}
             onRemovePendingAttachment={onRemovePendingAttachment}
+            onRetryAttachment={onRetryAttachment}
             placeholder={inputPlaceholder}
             isInitial={true}
           />
@@ -214,6 +217,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             pendingAttachments={pendingAttachments}
             onAttachFile={onAttachFile}
             onRemovePendingAttachment={onRemovePendingAttachment}
+            onRetryAttachment={onRetryAttachment}
             placeholder={inputPlaceholder}
             isInitial={false}
           />

@@ -16,6 +16,7 @@ import {
   fetchDocuments,
   uploadDocument,
   indexDocument,
+  fetchDocumentStage,
   attachDocumentToConversation,
   detachDocumentFromConversation
 } from './api';
@@ -139,45 +140,94 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleAttachFile = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      return;
-    }
-    const tempId = `file-${Date.now()}`;
-    const newAttach: AttachedDocument = {
-      id: tempId,
-      name: file.name,
-      size_bytes: file.size,
-      status: 'uploading',
-      isUploading: true
-    };
-    setPendingAttachments(prev => [...prev, newAttach]);
+  const runAttachmentProcessingPipeline = async (tempId: string, file: File, existingDocId?: string) => {
+    let docId = existingDocId;
 
     try {
-      const uploadRes = await uploadDocument(file);
+      if (!docId) {
+        // Stage 1: Uploading PDF...
+        setPendingAttachments(prev =>
+          prev.map(f => (f.id === tempId ? {
+            ...f,
+            status: 'uploading',
+            stage: 'uploading',
+            stageLabel: 'Uploading PDF...',
+            progress: 15,
+            isUploading: true
+          } : f))
+        );
+
+        const uploadRes = await uploadDocument(file);
+        docId = uploadRes.document_id;
+      }
+
+      // Stage 2: Extracting text...
       setPendingAttachments(prev =>
-        prev.map(f => (f.id === tempId ? { ...f, document_id: uploadRes.document_id, status: 'indexing' } : f))
+        prev.map(f => (f.id === tempId ? {
+          ...f,
+          document_id: docId,
+          status: 'indexing',
+          stage: 'extracting_text',
+          stageLabel: 'Extracting text...',
+          progress: 30
+        } : f))
       );
 
-      await indexDocument(uploadRes.document_id);
+      // Real-time backend stage polling while indexDocument runs
+      let isDone = false;
+      const pollTimer = setInterval(async () => {
+        if (isDone) {
+          clearInterval(pollTimer);
+          return;
+        }
+        try {
+          const stageInfo = await fetchDocumentStage(docId!);
+          if (stageInfo && !isDone) {
+            setPendingAttachments(prev =>
+              prev.map(f => (f.id === tempId || f.document_id === docId ? {
+                ...f,
+                stage: stageInfo.stage,
+                stageLabel: stageInfo.message,
+                progress: stageInfo.progress,
+                status: stageInfo.stage === 'failed' ? 'failed' : (stageInfo.stage === 'ready' ? 'ready' : 'indexing'),
+                error_message: stageInfo.error || f.error_message
+              } : f))
+            );
+          }
+        } catch {
+          // Ignore transient poll error
+        }
+      }, 180);
 
+      try {
+        await indexDocument(docId);
+      } finally {
+        isDone = true;
+        clearInterval(pollTimer);
+      }
+
+      // Stage 7: Ready to chat
       const readyAttach: AttachedDocument = {
-        id: uploadRes.document_id,
-        document_id: uploadRes.document_id,
+        id: docId,
+        document_id: docId,
         name: file.name,
         size_bytes: file.size,
         status: 'ready',
-        isUploading: false
+        stage: 'ready',
+        stageLabel: 'Ready to chat',
+        progress: 100,
+        isUploading: false,
+        fileObj: file
       };
 
       setPendingAttachments(prev =>
-        prev.map(f => (f.id === tempId ? readyAttach : f))
+        prev.map(f => (f.id === tempId || f.document_id === docId ? readyAttach : f))
       );
 
       // If already in an active conversation, persistently associate doc with this conversation
       if (activeConvId) {
         try {
-          await attachDocumentToConversation(activeConvId, uploadRes.document_id);
+          await attachDocumentToConversation(activeConvId, docId);
           const updatedConv = await fetchConversation(activeConvId);
           setConversationDocuments(updatedConv.documents || []);
           const updatedConvs = await fetchConversations();
@@ -190,10 +240,50 @@ export const App: React.FC = () => {
       const updatedDocs = await fetchDocuments();
       setDocuments(updatedDocs);
     } catch (err: any) {
-      console.error('File upload failed:', err);
+      console.error('File upload/indexing failed:', err);
       setPendingAttachments(prev =>
-        prev.map(f => (f.id === tempId ? { ...f, status: 'failed', isUploading: false, error_message: err.message || 'Upload failed' } : f))
+        prev.map(f => (f.id === tempId ? {
+          ...f,
+          status: 'failed',
+          stage: 'failed',
+          stageLabel: 'Processing failed',
+          progress: 0,
+          isUploading: false,
+          error_message: err.message || 'Processing failed'
+        } : f))
       );
+    }
+  };
+
+  const handleAttachFile = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      return;
+    }
+    const tempId = `file-${Date.now()}`;
+    const newAttach: AttachedDocument = {
+      id: tempId,
+      name: file.name,
+      size_bytes: file.size,
+      status: 'uploading',
+      stage: 'uploading',
+      stageLabel: 'Uploading PDF...',
+      progress: 15,
+      isUploading: true,
+      fileObj: file
+    };
+    setPendingAttachments(prev => [...prev, newAttach]);
+
+    await runAttachmentProcessingPipeline(tempId, file);
+  };
+
+  const handleRetryAttachment = (id: string) => {
+    const item = pendingAttachments.find(f => f.id === id);
+    if (!item) return;
+    if (item.fileObj) {
+      runAttachmentProcessingPipeline(item.id, item.fileObj, item.document_id);
+    } else if (item.document_id) {
+      const dummyFile = new File([], item.name, { type: 'application/pdf' });
+      runAttachmentProcessingPipeline(item.id, dummyFile, item.document_id);
     }
   };
 
@@ -383,6 +473,7 @@ export const App: React.FC = () => {
         conversationDocuments={conversationDocuments}
         onAttachFile={handleAttachFile}
         onRemovePendingAttachment={handleRemovePendingAttachment}
+        onRetryAttachment={handleRetryAttachment}
         onRemoveConversationDocument={handleRemoveConversationDocument}
       />
 

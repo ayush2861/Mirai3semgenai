@@ -16,6 +16,7 @@ from app.services.vector.chunking_service import intelligent_chunker
 from app.services.vector.embedding_service import embedding_service
 from app.services.vector.chroma_service import chroma_service
 from app.services.vector.retrieval_service import hybrid_retrieval_service
+from app.services.stage_tracker import document_stage_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -92,65 +93,79 @@ class IndexingService:
         )
 
         if not chunks:
+            document_stage_tracker.set_stage(document_id, "failed", 0, "Indexing failed", error="Document produced 0 chunks for indexing.")
             raise DocumentProcessingError(f"Document '{document_id}' produced 0 chunks for indexing.")
 
-        # 2. Batch generate embeddings using local all-MiniLM-L6-v2 (offloaded to threadpool)
-        logger.info(f"Generating embeddings for {len(chunks)} chunks of document '{doc_meta['filename']}'...")
-        chunk_texts = [c.content for c in chunks]
-        embeddings = await asyncio.to_thread(
-            embedding_service.embed_texts,
-            chunk_texts,
-            batch_size=16,
-            normalize=True
-        )
+        try:
+            # Stage 5: Generating embeddings...
+            document_stage_tracker.set_stage(document_id, "generating_embeddings", 78, "Generating embeddings...")
 
-        # 3. Upsert into ChromaDB (offloaded to threadpool)
-        await asyncio.to_thread(chroma_service.upsert_chunks, chunks, embeddings)
+            # 2. Batch generate embeddings using local all-MiniLM-L6-v2 (offloaded to threadpool)
+            logger.info(f"Generating embeddings for {len(chunks)} chunks of document '{doc_meta['filename']}'...")
+            chunk_texts = [c.content for c in chunks]
+            embeddings = await asyncio.to_thread(
+                embedding_service.embed_texts,
+                chunk_texts,
+                batch_size=16,
+                normalize=True
+            )
 
-        # 4. Register in in-memory BM25 index
-        chunk_dicts = [
-            {
-                "chunk_id": c.chunk_id,
-                "content": c.content,
-                "metadata": {
-                    "document_id": c.document_id,
-                    "document_name": c.document_name,
-                    "user_id": c.user_id,
-                    "page_number": c.page_number,
-                    "chunk_index": c.chunk_index,
-                    "section_title": c.section_title,
-                    "content_type": c.content_type,
-                    "extraction_method": c.extraction_method,
-                    "char_count": c.char_count,
-                    "word_count": c.word_count
+            # Stage 6: Indexing document...
+            document_stage_tracker.set_stage(document_id, "indexing_document", 92, "Indexing document...")
+
+            # 3. Upsert into ChromaDB (offloaded to threadpool)
+            await asyncio.to_thread(chroma_service.upsert_chunks, chunks, embeddings)
+
+            # 4. Register in in-memory BM25 index
+            chunk_dicts = [
+                {
+                    "chunk_id": c.chunk_id,
+                    "content": c.content,
+                    "metadata": {
+                        "document_id": c.document_id,
+                        "document_name": c.document_name,
+                        "user_id": c.user_id,
+                        "page_number": c.page_number,
+                        "chunk_index": c.chunk_index,
+                        "section_title": c.section_title,
+                        "content_type": c.content_type,
+                        "extraction_method": c.extraction_method,
+                        "char_count": c.char_count,
+                        "word_count": c.word_count
+                    }
                 }
-            }
-            for c in chunks
-        ]
-        hybrid_retrieval_service.bm25_manager.register_chunks(user_id, document_id, chunk_dicts)
+                for c in chunks
+            ]
+            hybrid_retrieval_service.bm25_manager.register_chunks(user_id, document_id, chunk_dicts)
 
-        # 5. Update document metadata
-        now_iso = datetime.now(timezone.utc).isoformat()
-        doc_meta["is_indexed"] = True
-        doc_meta["indexed_chunks"] = len(chunks)
-        doc_meta["indexed_at"] = now_iso
-        doc_meta["user_id"] = user_id
-        all_meta[document_id] = doc_meta
-        document_service._save_metadata(all_meta)
+            # 5. Update document metadata
+            now_iso = datetime.now(timezone.utc).isoformat()
+            doc_meta["is_indexed"] = True
+            doc_meta["indexed_chunks"] = len(chunks)
+            doc_meta["indexed_at"] = now_iso
+            doc_meta["user_id"] = user_id
+            all_meta[document_id] = doc_meta
+            document_service._save_metadata(all_meta)
 
-        logger.info(
-            f"Document '{document_id}' successfully indexed: {len(chunks)} chunks "
-            f"in collection '{chroma_service.collection_name}'."
-        )
+            # Stage 7: Ready to chat
+            document_stage_tracker.set_stage(document_id, "ready", 100, "Ready to chat")
 
-        return IndexDocumentResponse(
-            document_id=document_id,
-            document_name=doc_meta["filename"],
-            status="indexed",
-            total_chunks_indexed=len(chunks),
-            collection_name=chroma_service.collection_name,
-            message="Document content successfully indexed into ChromaDB and BM25."
-        )
+            logger.info(
+                f"Document '{document_id}' successfully indexed: {len(chunks)} chunks "
+                f"in collection '{chroma_service.collection_name}'."
+            )
+
+            return IndexDocumentResponse(
+                document_id=document_id,
+                document_name=doc_meta["filename"],
+                status="indexed",
+                total_chunks_indexed=len(chunks),
+                collection_name=chroma_service.collection_name,
+                message="Document content successfully indexed into ChromaDB and BM25."
+            )
+        except Exception as e:
+            document_stage_tracker.set_stage(document_id, "failed", 0, "Indexing failed", error=str(e))
+            raise
 
     def get_index_status(self, document_id: str, user_id: str = "default_user") -> IndexStatusResponse:
         all_meta = document_service._load_metadata()

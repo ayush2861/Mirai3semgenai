@@ -11,6 +11,16 @@ export interface SourceReference {
   score: number;
 }
 
+export type ProcessingStage =
+  | 'uploading'
+  | 'extracting_text'
+  | 'analyzing_pages'
+  | 'chunking_document'
+  | 'generating_embeddings'
+  | 'indexing_document'
+  | 'ready'
+  | 'failed';
+
 export interface AttachedDocument {
   id: string;
   name: string;
@@ -18,7 +28,11 @@ export interface AttachedDocument {
   document_id?: string;
   isUploading?: boolean;
   status?: 'uploading' | 'processing' | 'indexing' | 'ready' | 'failed';
+  stage?: ProcessingStage;
+  stageLabel?: string;
+  progress?: number;
   error_message?: string;
+  fileObj?: File;
 }
 
 export interface ChatMessage {

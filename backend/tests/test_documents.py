@@ -100,3 +100,18 @@ def test_missing_document_handling(client):
 
     del_res = client.delete(f"/api/v1/documents/{non_existent_id}")
     assert del_res.status_code == status.HTTP_404_NOT_FOUND
+
+def test_document_stage_endpoint(client, sample_pdf_bytes):
+    """Test 11: Document stage endpoint returns real-time granular stage and progress."""
+    file_tuple = ("stage_test_runbook.pdf", io.BytesIO(sample_pdf_bytes), "application/pdf")
+    upload_res = client.post("/api/v1/documents/upload", files={"file": file_tuple})
+    assert upload_res.status_code == status.HTTP_201_CREATED
+    doc_id = upload_res.json()["document_id"]
+
+    stage_res = client.get(f"/api/v1/documents/{doc_id}/stage")
+    assert stage_res.status_code == status.HTTP_200_OK
+    stage_data = stage_res.json()
+    assert stage_data["document_id"] == doc_id
+    assert "stage" in stage_data
+    assert "progress" in stage_data
+    assert "message" in stage_data

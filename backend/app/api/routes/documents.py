@@ -15,6 +15,7 @@ from app.schemas.search import IndexDocumentResponse, IndexStatusResponse
 from app.services.document_service import document_service
 from app.services.processing_service import processing_service
 from app.services.vector.indexing_service import indexing_service
+from app.services.stage_tracker import document_stage_tracker
 from app.api.deps import get_current_user_id
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -28,7 +29,9 @@ async def upload_document(
     Validates, uploads, and stores a PDF document file with user ownership.
     Enforces PDF MIME type, magic bytes verification, and maximum upload size limit.
     """
-    return await document_service.save_uploaded_file(file, user_id=user_id)
+    res = await document_service.save_uploaded_file(file, user_id=user_id)
+    document_stage_tracker.set_stage(res.document_id, "uploading", 15, "Uploading PDF...")
+    return res
 
 @router.get("", response_model=List[DocumentMetadata], status_code=status.HTTP_200_OK)
 async def list_documents(
@@ -123,3 +126,16 @@ async def delete_document_index(
     Deletes the document's vector embeddings from ChromaDB and purges its BM25 index.
     """
     return indexing_service.delete_index(document_id=document_id, user_id=user_id)
+
+@router.get("/{document_id}/stage", status_code=status.HTTP_200_OK)
+async def get_document_stage(
+    document_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Retrieves the real-time granular processing stage of a document:
+    uploading -> extracting_text -> analyzing_pages -> chunking_document -> generating_embeddings -> indexing_document -> ready / failed
+    """
+    all_meta = document_service._load_metadata()
+    default_meta = all_meta.get(document_id)
+    return document_stage_tracker.get_stage(document_id, default_meta=default_meta)

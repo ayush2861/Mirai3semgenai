@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Plus, ArrowUp, Loader2, Sparkles, FileText, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { AttachedDocument } from '../types';
+import { PdfIndexingAnimation } from './PdfIndexingAnimation';
 
 interface ChatInputProps {
   input: string;
@@ -10,6 +11,7 @@ interface ChatInputProps {
   pendingAttachments?: AttachedDocument[];
   onAttachFile?: (file: File) => Promise<void>;
   onRemovePendingAttachment?: (id: string) => void;
+  onRetryAttachment?: (id: string) => void;
   placeholder?: string;
   isInitial?: boolean;
 }
@@ -22,6 +24,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   pendingAttachments = [],
   onAttachFile,
   onRemovePendingAttachment,
+  onRetryAttachment,
   placeholder = "Ask TitanOps anything about your infrastructure...",
   isInitial = false
 }) => {
@@ -144,6 +147,33 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               const isFailed = file.status === 'failed';
               const isReady = file.status === 'ready' || (!isProcessing && !isFailed);
 
+              // Map real backend stage to display text in correct order
+              const getStageText = () => {
+                if (file.stageLabel) return file.stageLabel;
+                switch (file.stage) {
+                  case 'uploading':
+                    return 'Uploading PDF...';
+                  case 'extracting_text':
+                    return 'Extracting text...';
+                  case 'analyzing_pages':
+                    return 'Analyzing pages...';
+                  case 'chunking_document':
+                    return 'Chunking document...';
+                  case 'generating_embeddings':
+                    return 'Generating embeddings...';
+                  case 'indexing_document':
+                    return 'Indexing document...';
+                  case 'ready':
+                    return 'Ready to chat';
+                  case 'failed':
+                    return 'Processing failed';
+                  default:
+                    return file.status === 'indexing' ? 'Indexing document...' : 'Uploading PDF...';
+                }
+              };
+
+              const stageText = getStageText();
+
               return (
                 <div
                   key={file.id}
@@ -164,22 +194,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     </button>
                   )}
 
-                  {/* Dark preview thumbnail with status */}
-                  <div className="flex-1 w-full rounded-lg bg-[#0F0F0F] flex flex-col items-center justify-center overflow-hidden relative">
+                  {/* Dark preview thumbnail with full-square animation */}
+                  <div className="flex-1 w-full rounded-lg bg-[#000000] flex flex-col items-center justify-center overflow-hidden relative border border-[#1f1f1f]">
                     {isProcessing ? (
-                      <div className="flex flex-col items-center justify-center space-y-1">
-                        <Loader2 size={18} className="animate-spin text-blue-400" />
-                        <span className="text-[9px] text-blue-400 font-medium">
-                          {file.status === 'indexing' ? 'Indexing...' : 'Uploading...'}
-                        </span>
-                      </div>
+                      <PdfIndexingAnimation progress={file.progress} />
                     ) : isFailed ? (
-                      <div className="flex flex-col items-center justify-center space-y-0.5" title={file.error_message || 'Indexing failed'}>
-                        <AlertCircle size={18} className="text-red-400" />
-                        <span className="text-[9px] text-red-400 font-medium">Failed</span>
+                      <div
+                        className="flex flex-col items-center justify-center space-y-1 p-1 text-center bg-[#0F0F0F] w-full h-full"
+                        title={file.error_message || 'Indexing failed'}
+                      >
+                        <AlertCircle size={18} className="text-red-400 shrink-0" />
+                        <span className="text-[9px] text-red-400 font-medium leading-tight">Error</span>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center relative w-full h-full">
+                      <div className="flex flex-col items-center justify-center relative w-full h-full bg-[#0F0F0F]">
                         <FileText size={22} className="text-[#666666] group-hover:text-[#888888] transition-colors" />
                         <div className="absolute top-1 right-1">
                           <CheckCircle2 size={12} className="text-emerald-400" />
@@ -188,14 +216,70 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     )}
                   </div>
 
-                  {/* Red PDF badge + filename */}
-                  <div className="flex items-center space-x-1.5 mt-1 pt-0.5">
-                    <span className="text-[9px] font-black tracking-wider px-1 py-0.5 rounded bg-[#DC2626] text-white leading-none">
-                      PDF
-                    </span>
-                    <span className="text-[11px] font-medium text-[#E5E5E5] truncate flex-1 leading-tight" title={file.name}>
-                      {file.name}
-                    </span>
+                  {/* Processing stages / status below the animation */}
+                  <div className="w-full mt-1 pt-0.5 overflow-hidden">
+                    {isProcessing ? (
+                      <div
+                        className="flex items-center space-x-1 w-full overflow-hidden"
+                        title={`${file.name} — ${stageText}`}
+                      >
+                        <span className="text-[8.5px] font-black tracking-wider px-1 py-0.5 rounded bg-[#DC2626] text-white leading-none shrink-0">
+                          PDF
+                        </span>
+                        <div className="flex-1 min-w-0 flex items-center space-x-1">
+                          {/* Animated pulsing indicator */}
+                          <span className="relative flex h-1.5 w-1.5 shrink-0">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+                          </span>
+                          <span
+                            key={stageText}
+                            className="text-[9.5px] font-medium text-blue-300 truncate leading-tight animate-fade-in"
+                          >
+                            {stageText}
+                          </span>
+                        </div>
+                      </div>
+                    ) : isFailed ? (
+                      <div className="flex items-center justify-between w-full">
+                        <div
+                          className="flex items-center space-x-1 min-w-0 flex-1 overflow-hidden"
+                          title={file.error_message || 'Indexing failed'}
+                        >
+                          <span className="text-[8.5px] font-black tracking-wider px-1 py-0.5 rounded bg-[#DC2626] text-white leading-none shrink-0">
+                            PDF
+                          </span>
+                          <span className="text-[9.5px] font-medium text-red-400 truncate leading-tight">
+                            Failed
+                          </span>
+                        </div>
+                        {onRetryAttachment && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRetryAttachment(file.id);
+                            }}
+                            className="text-[9px] text-blue-400 hover:text-blue-300 font-semibold underline shrink-0 ml-1 cursor-pointer"
+                            title="Retry processing"
+                          >
+                            Retry
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-1.5 w-full">
+                        <span className="text-[9px] font-black tracking-wider px-1 py-0.5 rounded bg-[#DC2626] text-white leading-none shrink-0">
+                          PDF
+                        </span>
+                        <span
+                          className="text-[11px] font-medium text-[#E5E5E5] truncate flex-1 leading-tight"
+                          title={file.name}
+                        >
+                          {file.name}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
