@@ -1,17 +1,25 @@
+import os
 import logging
 import threading
-from typing import List, Optional
-from sentence_transformers import SentenceTransformer
+from typing import List, Optional, Any
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Reduce thread and memory allocations for low-memory environments (Render 512MB RAM)
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("VECLIB_MAXIMUM_THREADS", "1")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 class EmbeddingService:
     """
-    Local embedding generator using Sentence Transformers.
-    Loads sentence-transformers/all-MiniLM-L6-v2 locally as a thread-safe singleton.
-    Provides batch embedding generation for chunks and normalized embeddings for queries.
+    Lightweight embedding generator.
+    Uses ChromaDB's built-in ONNXMiniLM_L6_V2 runtime (fast, minimal RAM < 150MB, no PyTorch overhead).
+    Falls back gracefully to SentenceTransformer if ONNX runtime is unavailable.
     """
 
     _instance: Optional["EmbeddingService"] = None
@@ -19,7 +27,8 @@ class EmbeddingService:
 
     def __init__(self, model_name: Optional[str] = None):
         self.model_name = model_name or settings.EMBEDDING_MODEL_NAME
-        self._model: Optional[SentenceTransformer] = None
+        self._model: Optional[Any] = None
+        self._is_onnx: bool = False
         self._dimension: int = 384
         self._init_lock = threading.Lock()
 
@@ -32,24 +41,41 @@ class EmbeddingService:
         return cls._instance
 
     def _ensure_model_loaded(self):
-        """Loads model once into memory."""
+        """Loads lightweight ONNX model into memory (or SentenceTransformer fallback)."""
         if self._model is None:
             with self._init_lock:
                 if self._model is None:
-                    logger.info(f"Loading local SentenceTransformer model: {self.model_name}...")
+                    # 1. Primary: Lightweight ONNX MiniLM (safe for 512MB containers)
                     try:
+                        from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+                        logger.info("Initializing lightweight ONNXMiniLM_L6_V2 embedding engine...")
+                        self._model = ONNXMiniLM_L6_V2()
+                        self._is_onnx = True
+                        self._dimension = 384
+                        logger.info("Lightweight ONNX embedding engine initialized successfully (dim=384).")
+                        return
+                    except Exception as onnx_err:
+                        logger.warning(
+                            f"ONNX MiniLM engine initialization failed ({onnx_err}); "
+                            "falling back to SentenceTransformer..."
+                        )
+
+                    # 2. Secondary fallback: SentenceTransformer (lazy loaded)
+                    try:
+                        from sentence_transformers import SentenceTransformer
+                        logger.info(f"Loading SentenceTransformer fallback model: {self.model_name}...")
                         self._model = SentenceTransformer(self.model_name)
-                        # Derive dimension safely
+                        self._is_onnx = False
                         if hasattr(self._model, "get_embedding_dimension"):
                             self._dimension = self._model.get_embedding_dimension()
                         else:
                             self._dimension = self._model.get_sentence_embedding_dimension()
                         logger.info(
-                            f"Embedding model '{self.model_name}' loaded successfully "
+                            f"SentenceTransformer fallback model loaded successfully "
                             f"(dimension={self._dimension})."
                         )
                     except Exception as e:
-                        logger.error(f"Failed to initialize embedding model '{self.model_name}': {e}")
+                        logger.error(f"Failed to initialize embedding model: {e}")
                         raise RuntimeError(f"Embedding model initialization failed: {str(e)}")
 
     @property
@@ -71,14 +97,18 @@ class EmbeddingService:
 
         self._ensure_model_loaded()
         try:
-            embeddings = self._model.encode(
-                sentences=texts,
-                batch_size=batch_size,
-                show_progress_bar=False,
-                normalize_embeddings=normalize,
-                convert_to_numpy=True
-            )
-            return embeddings.tolist()
+            if self._is_onnx:
+                raw_embeddings = self._model(texts)
+                return [list(map(float, vec)) for vec in raw_embeddings]
+            else:
+                embeddings = self._model.encode(
+                    sentences=texts,
+                    batch_size=batch_size,
+                    show_progress_bar=False,
+                    normalize_embeddings=normalize,
+                    convert_to_numpy=True
+                )
+                return embeddings.tolist()
         except Exception as e:
             logger.error(f"Error generating batch embeddings: {e}")
             raise RuntimeError(f"Failed to generate embeddings: {str(e)}")
@@ -92,12 +122,16 @@ class EmbeddingService:
 
         self._ensure_model_loaded()
         try:
-            embedding = self._model.encode(
-                sentences=query.strip(),
-                normalize_embeddings=normalize,
-                convert_to_numpy=True
-            )
-            return embedding.tolist()
+            if self._is_onnx:
+                res = self._model([query.strip()])
+                return [float(x) for x in res[0]]
+            else:
+                embedding = self._model.encode(
+                    sentences=query.strip(),
+                    normalize_embeddings=normalize,
+                    convert_to_numpy=True
+                )
+                return embedding.tolist()
         except Exception as e:
             logger.error(f"Error generating query embedding for '{query}': {e}")
             raise RuntimeError(f"Failed to generate query embedding: {str(e)}")
