@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { X, FileText, ExternalLink, BookOpen, Layers, CheckCircle2 } from 'lucide-react';
 import { SourceReference, DocumentMetadata } from '../types';
-import { fetchDocumentPage } from '../api';
+import { fetchDocumentPage, getDocumentFileUrl } from '../api';
 
 interface SourceModalProps {
   source: SourceReference | null;
   documents: DocumentMetadata[];
   onClose: () => void;
+  onOpenSidePanel?: (doc: { id: string; name: string }, page?: number) => void;
 }
 
 export const SourceModal: React.FC<SourceModalProps> = ({
   source,
   documents,
-  onClose
+  onClose,
+  onOpenSidePanel
 }) => {
   const [pageDetails, setPageDetails] = useState<{ text?: string; total_pages?: number } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,7 +35,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
   if (!source) return null;
 
   const matchedDoc = documents.find(d => d.filename === source.document_name);
-  const rawPdfUrl = matchedDoc ? `/api/documents/${matchedDoc.id}/raw#page=${source.page_number}` : '#';
+  const rawPdfUrl = matchedDoc ? `${getDocumentFileUrl(matchedDoc.id)}#page=${source.page_number}` : '#';
 
   return (
     <div
@@ -94,15 +96,30 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                 <span>Exact Text Content (Page {source.page_number})</span>
               </span>
               {matchedDoc && (
-                <a
-                  href={rawPdfUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-blue-400 hover:text-blue-300 flex items-center space-x-1"
-                >
-                  <span>Open raw PDF</span>
-                  <ExternalLink size={12} />
-                </a>
+                <div className="flex items-center space-x-3">
+                  {onOpenSidePanel && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpenSidePanel({ id: matchedDoc.id, name: matchedDoc.filename }, source.page_number);
+                        onClose();
+                      }}
+                      className="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center space-x-1 font-medium"
+                    >
+                      <Layers size={13} />
+                      <span>Open in Side Panel</span>
+                    </button>
+                  )}
+                  <a
+                    href={rawPdfUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-[#888888] hover:text-[#CCCCCC] flex items-center space-x-1"
+                  >
+                    <span>Raw PDF</span>
+                    <ExternalLink size={11} />
+                  </a>
+                </div>
               )}
             </div>
 

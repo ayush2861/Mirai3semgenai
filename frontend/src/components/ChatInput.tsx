@@ -14,6 +14,7 @@ interface ChatInputProps {
   onRetryAttachment?: (id: string) => void;
   placeholder?: string;
   isInitial?: boolean;
+  onOpenDocument?: (doc: AttachedDocument) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -26,7 +27,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onRemovePendingAttachment,
   onRetryAttachment,
   placeholder = "Ask TitanOps anything about your infrastructure...",
-  isInitial = false
+  isInitial = false,
+  onOpenDocument
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -179,7 +181,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               return (
                 <div
                   key={file.id}
-                  className="relative group w-[100px] h-[92px] rounded-2xl bg-[#141414] border border-[#2f2f2f] hover:border-[#444444] p-2 flex flex-col justify-between shadow-md transition-all"
+                  onClick={() => {
+                    if (onOpenDocument && file.id) {
+                      onOpenDocument(file);
+                    }
+                  }}
+                  className="relative group w-[100px] h-[92px] rounded-2xl bg-[#141414] border border-[#2f2f2f] hover:border-[#444444] p-2 flex flex-col justify-between shadow-md transition-all cursor-pointer"
+                  title={`Click to view ${file.name} in side panel`}
                 >
                   {/* Remove button */}
                   {onRemovePendingAttachment && (

@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, UploadFile, File, Depends, Query, BackgroundTasks, status
+from fastapi.responses import FileResponse
 from app.schemas.document import (
     DocumentUploadResponse,
     DocumentMetadata,
@@ -79,6 +80,46 @@ async def get_document(
     Retrieves metadata for a specific uploaded document by ID.
     """
     return document_service.get_document(document_id)
+
+@router.get("/{document_id}/file", status_code=status.HTTP_200_OK)
+async def get_document_file(
+    document_id: str,
+    token: Optional[str] = Query(None),
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Streams the raw PDF file for in-browser preview and rendering in the side panel.
+    Sets Content-Type to application/pdf with inline Content-Disposition.
+    """
+    from app.core.config import settings
+    all_meta = document_service._load_metadata()
+    if document_id not in all_meta:
+        from app.core.exceptions import DocumentNotFoundError
+        raise DocumentNotFoundError(document_id)
+
+    doc_meta = all_meta[document_id]
+    stored_filename = doc_meta.get("stored_filename", "")
+    file_path = settings.UPLOADS_DIR / stored_filename
+    if not file_path.exists():
+        candidates = list(settings.UPLOADS_DIR.glob(f"{document_id}*"))
+        if candidates:
+            file_path = candidates[0]
+        else:
+            from app.core.exceptions import DocumentNotFoundError
+            raise DocumentNotFoundError(f"File for document {document_id} not found on disk.")
+
+    filename = doc_meta.get("filename", "document.pdf")
+    return FileResponse(
+        path=str(file_path),
+        media_type="application/pdf",
+        filename=filename,
+        content_disposition_type="inline",
+        headers={
+            "Content-Disposition": f"inline; filename=\"{filename}\"",
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=3600"
+        }
+    )
 
 @router.delete("/{document_id}", response_model=DocumentDeleteResponse, status_code=status.HTTP_200_OK)
 async def delete_document(

@@ -115,3 +115,10 @@ def test_document_stage_endpoint(client, sample_pdf_bytes):
     assert "stage" in stage_data
     assert "progress" in stage_data
     assert "message" in stage_data
+
+    # Verify file streaming endpoint for PDF viewer panel
+    file_res = client.get(f"/api/v1/documents/{doc_id}/file")
+    assert file_res.status_code == status.HTTP_200_OK
+    assert file_res.headers["content-type"] == "application/pdf"
+    assert "inline" in file_res.headers["content-disposition"]
+    assert len(file_res.content) > 0

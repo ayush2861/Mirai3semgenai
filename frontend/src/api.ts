@@ -18,6 +18,12 @@ import {
 // Centralized API configuration supporting environment variables
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
+export function getDocumentFileUrl(documentId: string): string {
+  const token = getAuthToken();
+  const base = `${API_BASE}/documents/${documentId}/file`;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+}
+
 /**
  * Authentication Helpers
  */

@@ -7,6 +7,7 @@ import { IncidentsModal } from './components/IncidentsModal';
 import { KnowledgeBaseModal } from './components/KnowledgeBaseModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SearchModal } from './components/SearchModal';
+import { PdfViewerPanel, PdfViewerDocument } from './components/PdfViewerPanel';
 import {
   fetchConversations,
   fetchConversation,
@@ -69,6 +70,41 @@ export const App: React.FC = () => {
   const [pendingAttachments, setPendingAttachments] = useState<AttachedDocument[]>([]);
   const [conversationDocuments, setConversationDocuments] = useState<AttachedDocument[]>([]);
 
+  // Split-panel PDF viewer state (matching Antigravity IDE layout)
+  const [activePdfDoc, setActivePdfDoc] = useState<PdfViewerDocument | null>(null);
+  const [activePdfPage, setActivePdfPage] = useState<number | undefined>(undefined);
+  const [pdfPanelWidth, setPdfPanelWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('inframind_pdf_panel_width');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 360 && parsed <= 1400) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return typeof window !== 'undefined'
+      ? Math.min(Math.max(window.innerWidth * 0.48, 480), 820)
+      : 600;
+  });
+
+  const handleOpenPdfViewer = (doc: PdfViewerDocument, page?: number) => {
+    setActivePdfDoc(doc);
+    setActivePdfPage(page);
+  };
+
+  const handleClosePdfViewer = () => {
+    setActivePdfDoc(null);
+    setActivePdfPage(undefined);
+  };
+
+  const handlePdfPanelWidthChange = (newWidth: number) => {
+    setPdfPanelWidth(newWidth);
+    try {
+      localStorage.setItem('inframind_pdf_panel_width', newWidth.toString());
+    } catch {}
+  };
+
   // Load conversations & documents
   const loadInitialData = useCallback(async () => {
     try {
@@ -113,6 +149,8 @@ export const App: React.FC = () => {
     setInput('');
     setPendingAttachments([]);
     setConversationDocuments([]);
+    setActivePdfDoc(null);
+    setActivePdfPage(undefined);
   };
 
   const [isRefreshingChat, setIsRefreshingChat] = useState(false);
@@ -335,12 +373,20 @@ export const App: React.FC = () => {
 
   const handleRemovePendingAttachment = (id: string) => {
     setPendingAttachments(prev => prev.filter(f => f.id !== id));
+    if (activePdfDoc && (activePdfDoc.id === id || activePdfDoc.document_id === id)) {
+      setActivePdfDoc(null);
+      setActivePdfPage(undefined);
+    }
   };
 
   const handleRemoveConversationDocument = async (id: string) => {
     const fileToRemove = conversationDocuments.find(f => f.id === id || f.document_id === id);
     const docId = fileToRemove?.document_id || id;
     setConversationDocuments(prev => prev.filter(f => f.id !== id && f.document_id !== id));
+    if (activePdfDoc && (activePdfDoc.id === docId || activePdfDoc.document_id === docId)) {
+      setActivePdfDoc(null);
+      setActivePdfPage(undefined);
+    }
 
     if (activeConvId && docId) {
       try {
@@ -510,7 +556,14 @@ export const App: React.FC = () => {
         input={input}
         setInput={setInput}
         onSend={handleSend}
-        onOpenSource={(src) => setActiveSource(src)}
+        onOpenSource={(src) => {
+          const matchedDoc = documents.find(d => d.filename === src.document_name);
+          if (matchedDoc) {
+            handleOpenPdfViewer({ id: matchedDoc.id, name: matchedDoc.filename }, src.page_number);
+          } else {
+            setActiveSource(src);
+          }
+        }}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={() => setIsSidebarCollapsed(false)}
         onNewChat={handleNewChat}
@@ -521,7 +574,19 @@ export const App: React.FC = () => {
         onRemovePendingAttachment={handleRemovePendingAttachment}
         onRetryAttachment={handleRetryAttachment}
         onRemoveConversationDocument={handleRemoveConversationDocument}
+        onOpenDocument={handleOpenPdfViewer}
       />
+
+      {/* Side PDF Viewer Panel (Antigravity split-bar style) */}
+      {activePdfDoc && (
+        <PdfViewerPanel
+          doc={activePdfDoc}
+          pageNumber={activePdfPage}
+          onClose={handleClosePdfViewer}
+          width={pdfPanelWidth}
+          onWidthChange={handlePdfPanelWidthChange}
+        />
+      )}
 
       {/* Modals & Overlays */}
       {activeSource && (
@@ -529,6 +594,7 @@ export const App: React.FC = () => {
           source={activeSource}
           documents={documents}
           onClose={() => setActiveSource(null)}
+          onOpenSidePanel={handleOpenPdfViewer}
         />
       )}
 

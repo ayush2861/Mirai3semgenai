@@ -24,6 +24,7 @@ interface ChatWorkspaceProps {
   onRemovePendingAttachment?: (id: string) => void;
   onRetryAttachment?: (id: string) => void;
   onRemoveConversationDocument?: (id: string) => void;
+  onOpenDocument?: (doc: AttachedDocument, page?: number) => void;
 }
 
 export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
@@ -44,7 +45,8 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   onAttachFile,
   onRemovePendingAttachment,
   onRetryAttachment,
-  onRemoveConversationDocument
+  onRemoveConversationDocument,
+  onOpenDocument
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -87,17 +89,21 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     {conversationDocuments.map((doc) => (
                       <span
                         key={doc.id || doc.document_id}
-                        className="inline-flex items-center space-x-1.5 bg-[#222222] text-[#E5E5E5] px-2 py-0.5 rounded-md text-[11px] font-medium border border-[#333333]"
-                        title={doc.name}
+                        onClick={() => onOpenDocument?.(doc)}
+                        className="inline-flex items-center space-x-1.5 bg-[#222222] text-[#E5E5E5] px-2 py-0.5 rounded-md text-[11px] font-medium border border-[#333333] cursor-pointer hover:bg-[#2C2C2C] hover:border-[#4F4F4F] hover:text-white transition-all group"
+                        title={`Click to view ${doc.name} in side panel`}
                       >
                         <span className="text-[8px] font-black tracking-wider px-1 py-0.2 rounded bg-[#DC2626] text-white">
                           PDF
                         </span>
-                        <span className="truncate max-w-[130px]">{doc.name}</span>
+                        <span className="truncate max-w-[130px] group-hover:underline underline-offset-2">{doc.name}</span>
                         {onRemoveConversationDocument && (
                           <button
                             type="button"
-                            onClick={() => onRemoveConversationDocument(doc.id || doc.document_id || '')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemoveConversationDocument(doc.id || doc.document_id || '');
+                            }}
                             title={`Detach ${doc.name} from conversation`}
                             className="text-[#888888] hover:text-white p-0.5 rounded hover:bg-[#333333] transition-colors ml-0.5"
                           >
@@ -162,6 +168,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             onRetryAttachment={onRetryAttachment}
             placeholder={inputPlaceholder}
             isInitial={true}
+            onOpenDocument={onOpenDocument}
           />
 
           {/* Quick starter suggestion chips */}
@@ -220,6 +227,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             onRetryAttachment={onRetryAttachment}
             placeholder={inputPlaceholder}
             isInitial={false}
+            onOpenDocument={onOpenDocument}
           />
           <div className="text-center mt-2">
             <span className="text-[11px] text-[#555555]">
