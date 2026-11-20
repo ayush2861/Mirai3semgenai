@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, Check, FileText, ChevronRight } from 'lucide-react';
-import { ChatMessage, SourceReference } from '../types';
+import { ChatMessage, SourceReference, AttachedDocument } from '../types';
 
 interface ChatMessageItemProps {
   message: ChatMessage;
   onOpenSource: (source: SourceReference) => void;
+  onOpenDocument?: (doc: AttachedDocument) => void;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   message,
-  onOpenSource
+  onOpenSource,
+  onOpenDocument
 }) => {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
@@ -59,24 +61,29 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         <div className="max-w-[75%] bg-[#1E1E1E] text-[#F5F5F5] rounded-3xl px-5 py-3.5 text-[15px] leading-relaxed shadow-sm border border-[#262626] select-text">
           {message.attachedFiles && message.attachedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">
-              {message.attachedFiles.map((file) => (
-                <div
-                  key={file.id}
-                  className="w-[96px] h-[88px] rounded-2xl bg-[#141414] border border-[#2f2f2f] p-2 flex flex-col justify-between shadow-sm"
-                >
-                  <div className="flex-1 w-full rounded-lg bg-[#0F0F0F] flex items-center justify-center">
-                    <FileText size={20} className="text-[#666666]" />
+              {message.attachedFiles.map((file) => {
+                const displayName = file.name || file.document_name || 'Document.pdf';
+                return (
+                  <div
+                    key={file.id || file.document_id || displayName}
+                    onClick={() => onOpenDocument?.(file)}
+                    className="w-[96px] h-[88px] rounded-2xl bg-[#141414] border border-[#2f2f2f] hover:border-blue-500/60 p-2 flex flex-col justify-between shadow-sm cursor-pointer transition-all hover:scale-[1.03] group"
+                    title={`Click to open ${displayName} in PDF viewer`}
+                  >
+                    <div className="flex-1 w-full rounded-lg bg-[#0F0F0F] flex items-center justify-center group-hover:bg-[#181818] transition-colors">
+                      <FileText size={20} className="text-[#888888] group-hover:text-blue-400 transition-colors" />
+                    </div>
+                    <div className="flex items-center space-x-1.5 mt-1 pt-0.5">
+                      <span className="text-[9px] font-black tracking-wider px-1 py-0.5 rounded bg-[#DC2626] text-white leading-none">
+                        PDF
+                      </span>
+                      <span className="text-[11px] font-medium text-[#E5E5E5] group-hover:text-white truncate flex-1 leading-tight">
+                        {displayName}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-1.5 mt-1 pt-0.5">
-                    <span className="text-[9px] font-black tracking-wider px-1 py-0.5 rounded bg-[#DC2626] text-white leading-none">
-                      PDF
-                    </span>
-                    <span className="text-[11px] font-medium text-[#E5E5E5] truncate flex-1 leading-tight">
-                      {file.name}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
           {message.content}

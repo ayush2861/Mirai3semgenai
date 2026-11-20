@@ -210,6 +210,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 key={msg.id}
                 message={msg}
                 onOpenSource={onOpenSource}
+                onOpenDocument={onOpenDocument}
               />
             ))}
 

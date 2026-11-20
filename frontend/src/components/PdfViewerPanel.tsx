@@ -7,7 +7,8 @@ import {
   Download,
   FileText,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { getDocumentFileUrl } from '../api';
 
@@ -61,6 +62,21 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
       setHasError(false);
     }
   }, [doc?.fileObj, doc?.id, doc?.document_id]);
+
+  // Keyboard shortcut: Escape to go back / restore split / close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isMaximized) {
+          setIsMaximized(false);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMaximized, onClose]);
 
   // Handle draggable left border resize
   useEffect(() => {
@@ -117,12 +133,14 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
 
   return (
     <aside
-      style={{ width: isMaximized ? '100%' : `${width}px` }}
-      className={`relative h-screen bg-[#111111] border-l border-[#222222] flex flex-col z-20 transition-[width] duration-150 ease-out shrink-0 select-none ${
-        isMaximized ? 'fixed inset-y-0 right-0 z-50 w-full' : ''
+      style={{ width: isMaximized ? '100vw' : `${width}px` }}
+      className={`h-screen bg-[#111111] border-l border-[#222222] flex flex-col z-40 transition-all duration-150 ease-out shrink-0 select-none ${
+        isMaximized
+          ? 'fixed inset-0 z-50 w-screen h-screen max-w-[100vw] overflow-hidden'
+          : 'relative'
       }`}
     >
-      {/* Draggable resize handle on left border */}
+      {/* Draggable resize handle on left border (in split mode) */}
       {!isMaximized && (
         <div
           onMouseDown={handleStartResize}
@@ -133,14 +151,31 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
         </div>
       )}
 
-      {/* Top Header Bar (Antigravity breadcrumb style) */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-[#1E1E1E] bg-[#141414] shrink-0">
-        <div className="flex items-center space-x-2 overflow-hidden pr-2">
-          <span className="text-xs font-semibold text-[#888888] tracking-wide shrink-0">
+      {/* Top Header Bar with prominent Back to Chat button */}
+      <div className="h-14 w-full px-4 sm:px-6 flex items-center justify-between border-b border-[#1E1E1E] bg-[#141414] shrink-0 z-20">
+        <div className="flex items-center space-x-2 min-w-0 pr-2">
+          {/* Prominent Back to Chat button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (isMaximized) {
+                setIsMaximized(false);
+              } else {
+                onClose();
+              }
+            }}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#222222] hover:bg-[#2F2F2F] active:bg-[#1A1A1A] text-white border border-[#3A3A3A] hover:border-[#555555] text-xs font-semibold transition-all shrink-0 mr-2 shadow-sm group"
+            title={isMaximized ? 'Return to split view with chat (Esc)' : 'Close viewer and back to chat (Esc)'}
+          >
+            <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform text-[#A3A3A3] group-hover:text-white" />
+            <span>Back to Chat</span>
+          </button>
+
+          <span className="text-xs font-semibold text-[#888888] tracking-wide shrink-0 hidden md:inline">
             InfraMind
           </span>
-          <span className="text-xs text-[#444444] shrink-0">&gt;</span>
-          <div className="flex items-center space-x-1.5 truncate">
+          <span className="text-xs text-[#444444] shrink-0 hidden md:inline">&gt;</span>
+          <div className="flex items-center space-x-1.5 min-w-0 truncate">
             <span className="text-[9px] font-black tracking-wider px-1 py-0.5 rounded bg-[#DC2626] text-white shrink-0">
               PDF
             </span>
@@ -154,13 +189,13 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center space-x-1 shrink-0">
+        <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0 ml-2">
           {rawFileUrl && (
             <a
               href={rawFileUrl}
               target="_blank"
               rel="noopener noreferrer"
-              title="Open in new window"
+              title="Open in new browser tab"
               className="p-1.5 text-[#A3A3A3] hover:text-white hover:bg-[#222222] rounded-lg transition-colors"
             >
               <ExternalLink size={15} />
@@ -178,15 +213,27 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
             </a>
           )}
 
+          {/* Toggle Full Screen / Split View */}
           <button
             type="button"
             onClick={() => setIsMaximized(!isMaximized)}
-            title={isMaximized ? 'Restore split view' : 'Maximize viewer'}
-            className="p-1.5 text-[#A3A3A3] hover:text-white hover:bg-[#222222] rounded-lg transition-colors"
+            title={isMaximized ? 'Restore split view with chat' : 'Full screen view'}
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 text-[#A3A3A3] hover:text-white hover:bg-[#222222] rounded-lg transition-colors text-xs font-medium border border-transparent hover:border-[#333333]"
           >
-            {isMaximized ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            {isMaximized ? (
+              <>
+                <Minimize2 size={15} />
+                <span className="hidden sm:inline">Split View</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 size={15} />
+                <span className="hidden sm:inline">Expand</span>
+              </>
+            )}
           </button>
 
+          {/* Close button */}
           <button
             type="button"
             onClick={onClose}
