@@ -9,6 +9,7 @@ interface ChatInputProps {
   onSend: () => void;
   isLoading: boolean;
   pendingAttachments?: AttachedDocument[];
+  conversationDocuments?: AttachedDocument[];
   onAttachFile?: (file: File) => Promise<void>;
   onRemovePendingAttachment?: (id: string) => void;
   onRetryAttachment?: (id: string) => void;
@@ -23,10 +24,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
   isLoading,
   pendingAttachments = [],
+  conversationDocuments = [],
   onAttachFile,
   onRemovePendingAttachment,
   onRetryAttachment,
-  placeholder = "Ask TitanOps anything about your infrastructure...",
+  placeholder,
   isInitial = false,
   onOpenDocument
 }) => {
@@ -320,42 +322,70 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             </button>
           )}
 
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={1}
-            placeholder={placeholder}
-            disabled={isLoading}
-            className="flex-1 bg-transparent text-[#F5F5F5] placeholder-[#737373] text-[15.5px] leading-relaxed resize-none outline-none max-h-[180px] py-1 px-1 font-sans"
-          />
+          {(() => {
+            const hasActivePdfContext =
+              (pendingAttachments && pendingAttachments.length > 0) ||
+              (conversationDocuments && conversationDocuments.length > 0);
+            const resolvedPlaceholder =
+              placeholder ||
+              (hasActivePdfContext
+                ? "Ask questions about the attached PDF runbook..."
+                : "Ask TitanOps anything (programming, tech, general knowledge)...");
 
-          {!hasAttachments && (
-            <div className="flex items-center space-x-2 shrink-0 ml-2">
-              <div className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-[#2A2A2A]/70 text-[#A3A3A3] text-xs font-medium cursor-default">
-                <Sparkles size={13} className="text-blue-400" />
-                <span>SRE RAG</span>
-              </div>
+            return (
+              <>
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                  placeholder={resolvedPlaceholder}
+                  disabled={isLoading}
+                  className="flex-1 bg-transparent text-[#F5F5F5] placeholder-[#737373] text-[15.5px] leading-relaxed resize-none outline-none max-h-[180px] py-1 px-1 font-sans"
+                />
 
-              <button
-                onClick={onSend}
-                disabled={!canSend}
-                title={isAnyProcessing ? 'Processing PDF embeddings...' : 'Send (Enter)'}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                  canSend
-                    ? 'bg-[#3B82F6] hover:bg-blue-600 text-white cursor-pointer shadow-md shadow-blue-500/20'
-                    : 'bg-[#2A2A2A] text-[#737373] cursor-not-allowed'
-                }`}
-              >
-                {isLoading ? (
-                  <Loader2 size={16} className="animate-spin text-white" />
-                ) : (
-                  <ArrowUp size={18} strokeWidth={2.5} />
+                {!hasAttachments && (
+                  <div className="flex items-center space-x-2 shrink-0 ml-2">
+                    {hasActivePdfContext ? (
+                      <div
+                        className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-blue-950/40 border border-blue-500/30 text-blue-300 text-xs font-medium cursor-default transition-all"
+                        title="PDF Context Mode: answers grounded in attached PDF runbooks with page citations"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                        <span>PDF Context Mode</span>
+                      </div>
+                    ) : (
+                      <div
+                        className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-[#1C1C1C] border border-[#2A2A2A] text-[#888888] text-xs font-medium cursor-default transition-all"
+                        title="Normal Chat Mode: ask general questions across programming, cloud, and general knowledge"
+                      >
+                        <Sparkles size={12} className="text-[#888888]" />
+                        <span>Normal Chat</span>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={onSend}
+                      disabled={!canSend}
+                      title={isAnyProcessing ? 'Processing PDF embeddings...' : 'Send (Enter)'}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        canSend
+                          ? 'bg-[#3B82F6] hover:bg-blue-600 text-white cursor-pointer shadow-md shadow-blue-500/20'
+                          : 'bg-[#2A2A2A] text-[#737373] cursor-not-allowed'
+                      }`}
+                    >
+                      {isLoading ? (
+                        <Loader2 size={16} className="animate-spin text-white" />
+                      ) : (
+                        <ArrowUp size={18} strokeWidth={2.5} />
+                      )}
+                    </button>
+                  </div>
                 )}
-              </button>
-            </div>
-          )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Bottom controls row when attachments exist */}
@@ -371,9 +401,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             </button>
 
             <div className="flex items-center space-x-2">
-              <div className="hidden sm:flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#2A2A2A]/70 text-[#A3A3A3] text-xs font-medium cursor-default">
-                <Sparkles size={13} className="text-blue-400" />
-                <span>SRE RAG</span>
+              <div
+                className="hidden sm:flex items-center space-x-1.5 px-3 py-1 rounded-full bg-blue-950/40 border border-blue-500/30 text-blue-300 text-xs font-medium cursor-default"
+                title="PDF Context Mode: answers grounded in attached PDF runbooks with page citations"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                <span>PDF Context Mode</span>
               </div>
 
               <button

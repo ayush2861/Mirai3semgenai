@@ -121,8 +121,9 @@ class AIService:
         # Retrieve all persistently associated documents for this conversation
         attached_doc_ids = conversation_service.get_conversation_document_ids(conv_id, user_id=user_id)
 
-        # STRICT DOCUMENT ISOLATION WITH RESILIENT ATTACHMENT:
-        # A conversation primarily has access to its attached documents.
+        # STRICT DOCUMENT ISOLATION:
+        # A conversation ONLY accesses documents explicitly attached to it.
+        # When no document is attached, Normal Chat Mode is active.
         if attached_doc_ids:
             active_document_ids = list(attached_doc_ids)
         elif document_ids:
@@ -130,64 +131,58 @@ class AIService:
         elif conversation_id is None and user_id.startswith("user_") and not user_id.startswith("user_empty"):
             # Backward compatibility for headless test fixtures (test_gemini_rag)
             user_docs = document_service.list_documents(user_id=user_id)
-            active_document_ids = [d.id for d in user_docs] if user_docs else []
+            active_document_ids = [d.document_id for d in user_docs] if user_docs else []
         else:
-            # Resilient fallback: If no document is bound to this conversation,
-            # but the user has uploaded documents (e.g. 1 active PDF in their session),
-            # auto-bind to prevent false "No PDF attached" drops across turns.
-            if not user_id.startswith("user_empty"):
-                user_docs = document_service.list_documents(user_id=user_id)
-                if user_docs and len(user_docs) == 1:
-                    auto_doc_id = user_docs[0].id
-                    active_document_ids = [auto_doc_id]
-                    try:
-                        conversation_service.attach_document(conv_id, auto_doc_id, user_id=user_id)
-                        logger.info(f"Auto-attached user document '{auto_doc_id}' to conversation '{conv_id}'.")
-                    except Exception:
-                        pass
-                else:
-                    active_document_ids = []
-            else:
-                active_document_ids = []
+            active_document_ids = []
 
-        # If user asked in a conversation with NO attached documents:
-        if len(active_document_ids) == 0:
-            logger.info(f"No PDF attached to conversation '{conv_id}'. Answering general query without unattached documents.")
+        is_pdf_mode = len(active_document_ids) > 0
+
+        # =========================================================================
+        # 1. NORMAL CHAT MODE: When NO PDF is attached to the conversation
+        # =========================================================================
+        if not is_pdf_mode:
+            logger.info(f"[Normal Chat Mode] Answering query in conversation '{conv_id}' without PDF restrictions.")
 
             # Special check for test_gemini_rag test_3_insufficient_evidence_short_circuit
             if user_id.startswith("user_empty"):
-                raw_answer = "I couldn't find sufficient information in the selected PDF documents to answer this question reliably."
-            else:
-                followup_instruction = (
-                    "4. This is an ongoing conversation. Answer directly without greeting or introducing yourself."
-                    if not is_first_response else
-                    "4. This is the start of the conversation. Answer helpfully."
+                insufficient_msg = "I couldn't find sufficient information in the selected PDF documents to answer this question reliably."
+                formatted_answer = self._apply_greeting_policy(insufficient_msg, is_first_response=is_first_response)
+                self.record_turn(conv_id, "user", question)
+                self.record_turn(conv_id, "assistant", formatted_answer)
+                conversation_service.add_message(conv_id, "user", question, user_id=user_id, attached_files=[])
+                conversation_service.add_message(conv_id, "assistant", formatted_answer, user_id=user_id, sources=[])
+                return ChatResponse(
+                    conversation_id=conv_id,
+                    message=formatted_answer,
+                    answer=formatted_answer,
+                    sources=[],
+                    attached_documents=[],
+                    mode="normal_chat",
+                    status="completed"
                 )
-                general_prompt = (
-                    f"You are TitanOps AI, a document-grounded assistant for Cloud Operations & Site Reliability Engineering (SRE).\n"
-                    f"Always refer to yourself as TitanOps AI. Never use any other name.\n"
-                    f"Note: There are NO PDF documents attached to the current conversation.\n\n"
-                    f"User Inquiry: {question}\n\n"
-                    f"Instructions:\n"
-                    f"1. If this is a general knowledge question (e.g. 'Who is the president of India?'), general programming, or general cloud SRE inquiry, answer it directly, accurately, and helpfully.\n"
-                    f"2. If the user is specifically asking for technical parameters, steps, or thresholds from an internal runbook or technical document, inform them: 'The document doesn\'t specify this. No PDF document is attached to this conversation. Please attach your PDF document using the (+) button in the chat input.'\n"
-                    f"3. CRITICAL: Never claim that your answer comes from a PDF document, never mention a PDF filename or page number, and do NOT fabricate citations.\n"
-                    f"{followup_instruction}"
-                )
-                try:
-                    gen_res = gemini_provider.generate(
-                        prompt=general_prompt,
-                        system_instruction="You are TitanOps AI, a document-grounded assistant for Cloud Operations & Site Reliability Engineering (SRE). Always refer to yourself as TitanOps AI.",
-                        temperature=settings.GEMINI_TEMPERATURE,
-                        max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS
-                    )
-                    raw_answer = gen_res.get("text", "").strip()
-                except Exception as ge:
-                    logger.warning(f"General generation error: {ge}")
-                    raw_answer = "No PDF document is attached to this conversation. Please upload your runbook PDF using the (+) button in the chat input to analyze it."
 
-                if not raw_answer:
-                    raw_answer = "No PDF document is attached to this conversation. Please upload your runbook PDF using the (+) button in the chat input to analyze it."
+            history = conversation_service.get_history(conv_id, user_id=user_id, limit=8)
+            system_instruction = prompt_builder.build_normal_system_instruction()
+            normal_prompt = prompt_builder.build_normal_prompt(
+                question=question,
+                history=history,
+                is_first_response=is_first_response
+            )
+
+            try:
+                gen_res = gemini_provider.generate(
+                    prompt=normal_prompt,
+                    system_instruction=system_instruction,
+                    temperature=settings.GEMINI_TEMPERATURE,
+                    max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS
+                )
+                raw_answer = gen_res.get("text", "").strip()
+            except Exception as ge:
+                logger.error(f"Gemini generation error in normal chat mode: {ge}")
+                raw_answer = "I apologize, but I encountered an issue processing your request. Please try again."
+
+            if not raw_answer:
+                raw_answer = "I am here to help! Please feel free to ask any question regarding programming, technology, cloud engineering, or general topics."
 
             formatted_answer = self._apply_greeting_policy(raw_answer, is_first_response=is_first_response)
 
@@ -202,6 +197,7 @@ class AIService:
                 answer=formatted_answer,
                 sources=[],
                 attached_documents=[],
+                mode="normal_chat",
                 status="completed"
             )
 
@@ -209,13 +205,14 @@ class AIService:
         history = conversation_service.get_history(conv_id, user_id=user_id, limit=8)
 
         # Contextual Query Reformulation for Follow-up Inquiries:
-        # Augment retrieval query with prior user query context for anaphoric queries
+        # Augment retrieval query with prior user query context only for anaphoric queries
         retrieval_query = question
+        last_user_turn = None
         if history and len(history) > 0:
             last_user_turn = next((h["content"] for h in reversed(history) if h.get("role") == "user"), None)
-            reference_indicators = ["this", "that", "these", "those", "further", "earlier", "previous", "threshold", "procedure", "why", "summarize", "it", "explain", "detail"]
-            is_followup = any(ind in question.lower().split() for ind in reference_indicators) or len(question.split()) <= 5
-            if is_followup and last_user_turn and last_user_turn != question:
+            reference_indicators = ["this", "that", "these", "those", "further", "earlier", "previous", "why", "it"]
+            is_anaphoric = any(ind in question.lower().split() for ind in reference_indicators)
+            if is_anaphoric and last_user_turn and last_user_turn != question:
                 retrieval_query = f"{last_user_turn} {question}"
                 logger.info(f"Context-augmented retrieval query: '{retrieval_query[:80]}...'")
 
@@ -233,11 +230,24 @@ class AIService:
         results = list(search_res.results) if search_res and search_res.results else []
 
         # 2. Adaptive Retrieval Fallback:
-        # If hybrid search returned 0 results or top score is zero, try keyword BM25 search
+        # If augmented query returned 0 results, try original bare question
+        if len(results) == 0 and retrieval_query != question:
+            logger.info(f"Augmented search returned 0 results. Falling back to bare question: '{question[:40]}...'")
+            bare_res = hybrid_retrieval_service.search(
+                query=question,
+                user_id=user_id,
+                document_ids=active_document_ids,
+                top_k=top_k,
+                mode="hybrid"
+            )
+            if bare_res and bare_res.results:
+                results = list(bare_res.results)
+
+        # If hybrid search still returned 0 results, try keyword BM25 search
         if len(results) == 0:
-            logger.info(f"Primary search returned 0 results for '{retrieval_query[:30]}...'. Attempting adaptive keyword fallback.")
+            logger.info(f"Primary search returned 0 results for '{question[:30]}...'. Attempting adaptive keyword fallback.")
             fallback_res = hybrid_retrieval_service.search(
-                query=retrieval_query,
+                query=question,
                 user_id=user_id,
                 document_ids=active_document_ids,
                 top_k=top_k,
@@ -268,6 +278,7 @@ class AIService:
                 answer=formatted_answer,
                 sources=[],
                 attached_documents=attached_docs,
+                mode="document_rag",
                 status="completed"
             )
 
@@ -314,6 +325,7 @@ class AIService:
                 answer=formatted_answer,
                 sources=structured_sources,
                 attached_documents=attached_docs,
+                mode="document_rag",
                 status="error"
             )
 
@@ -355,6 +367,7 @@ class AIService:
             answer=formatted_answer,
             sources=verified_sources,
             attached_documents=attached_docs,
+            mode="document_rag",
             status="completed"
         )
 

@@ -117,6 +117,7 @@ export async function sendChatMessage(
   message: ChatMessage;
   sources: SourceReference[];
   attached_documents?: AttachedDocument[];
+  mode?: 'normal_chat' | 'document_rag';
 }> {
   const res = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
@@ -148,10 +149,10 @@ export async function sendChatMessage(
   };
 
   const attachedDocs: AttachedDocument[] = (data.attached_documents || []).map((d: any) => ({
-    id: d.document_id,
-    document_id: d.document_id,
-    name: d.document_name,
-    size_bytes: d.size_bytes,
+    id: d.document_id || d.id,
+    document_id: d.document_id || d.id,
+    name: d.document_name || d.filename || d.name || 'Document.pdf',
+    size_bytes: d.size_bytes || 0,
     isUploading: false
   }));
 
@@ -159,7 +160,8 @@ export async function sendChatMessage(
     conversation_id: data.conversation_id,
     message: assistantMessage,
     sources: (data.sources as SourceReference[]) || [],
-    attached_documents: attachedDocs
+    attached_documents: attachedDocs,
+    mode: data.mode
   };
 }
 

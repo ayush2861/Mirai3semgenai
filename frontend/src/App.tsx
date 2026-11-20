@@ -94,7 +94,25 @@ export const App: React.FC = () => {
     page?: number,
     snippet?: string
   ) => {
-    setActivePdfDoc(doc);
+    let resolvedDoc: PdfViewerDocument = { ...doc };
+    if (!resolvedDoc.document_id || resolvedDoc.document_id.startsWith('file-')) {
+      const docName = resolvedDoc.name || resolvedDoc.filename || resolvedDoc.document_name;
+      const match = documents.find(
+        d =>
+          (docName && (d.filename === docName || d.document_id === docName)) ||
+          (resolvedDoc.id && d.id === resolvedDoc.id)
+      );
+      if (match) {
+        resolvedDoc = {
+          ...resolvedDoc,
+          id: match.id || match.document_id,
+          document_id: match.document_id || match.id,
+          name: match.filename || docName,
+          filename: match.filename || docName
+        };
+      }
+    }
+    setActivePdfDoc(resolvedDoc);
     setActivePdfPage(page);
     setActivePdfSnippet(snippet);
   };
@@ -492,10 +510,12 @@ export const App: React.FC = () => {
       setConversations(updatedConvs);
     } catch (err: any) {
       console.error('Chat error:', err);
+      const isPdfMode = pendingAttachments.length > 0 || conversationDocuments.length > 0;
+      const errorPrefix = isPdfMode ? 'Failed to process document inquiry' : 'Failed to process request';
       const errorMsg: ChatMessage = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: `**Error:** Failed to analyze documentation. ${err.message || 'Please check your connection and try again.'}`,
+        content: `**Error:** ${errorPrefix}. ${err.message || 'Please check your connection and try again.'}`,
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMsg]);

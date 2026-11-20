@@ -69,11 +69,68 @@ Always refer to yourself as TitanOps AI. Never use any other name.
 5. If the answer isn't in the context, did I say so plainly and list NO sources?
 """
 
+NORMAL_SYSTEM_PROMPT = """You are TitanOps AI, an intelligent, versatile, and helpful AI assistant.
+Always refer to yourself as TitanOps AI.
+
+You assist users naturally and comprehensively across all subjects:
+- Programming, algorithms, software development (C++, Python, Java, JavaScript, Go, Rust, SQL, Bash, debugging, etc.).
+- Computer science, architecture, networking, databases, and cloud engineering.
+- Science, mathematics, general knowledge, education, history, literature, and everyday questions.
+- Provide clear, accurate, practical answers with structured explanations and code snippets with language tags where appropriate.
+- Do not force questions to be about SRE or Cloud Operations.
+- Do not require users to upload PDF documents and do not mention PDF uploads unless specifically asked.
+- Do not invent document citations or page numbers when answering general queries.
+"""
+
+
 class PromptBuilder:
     """Constructs system instructions and structured prompts for grounded RAG generation."""
 
     def build_system_instruction(self) -> str:
         return SYSTEM_PROMPT.strip()
+
+    def build_normal_system_instruction(self) -> str:
+        return NORMAL_SYSTEM_PROMPT.strip()
+
+    def build_normal_prompt(
+        self,
+        question: str,
+        history: Optional[List[Dict[str, str]]] = None,
+        is_first_response: bool = True
+    ) -> str:
+        prompt_parts: List[str] = []
+
+        # Conversation History Section
+        if history and len(history) > 0:
+            prompt_parts.append("=== CONVERSATION CONTEXT ===")
+            recent_history = history[-6:]
+            for turn in recent_history:
+                role = "User" if turn.get("role") == "user" else "Assistant"
+                content = turn.get("content", "").strip()
+                prompt_parts.append(f"{role}: {content}")
+            prompt_parts.append("=== END CONVERSATION CONTEXT ===\n")
+
+        prompt_parts.append(f"User Inquiry: {question.strip()}\n")
+        prompt_parts.append(
+            "Instructions:\n"
+            "1. If the user specifically asks what is specified 'according to the documents', 'in the runbook', or 'in the PDF', "
+            "inform them: 'I couldn\\'t find sufficient information in the documents. No PDF document is attached to this conversation. "
+            "Please attach your PDF document using the (+) button in the chat input.'\n"
+            "2. Otherwise, answer the user's question directly, accurately, and naturally across any domain (programming, technology, cloud, science, general knowledge, etc.).\n"
+            "3. For programming or technical questions, provide clear explanations and code snippets with proper syntax highlighting.\n"
+            "4. Do not invent PDF citations or page numbers.\n"
+        )
+        if not is_first_response:
+            prompt_parts.append(
+                "5. This is an ongoing conversation. Answer directly without repeating greetings or introducing yourself."
+            )
+        else:
+            prompt_parts.append(
+                "5. This is the start of the conversation. Greet the user with: 'Hello! I am TitanOps AI, your assistant for Cloud Operations and Site Reliability Engineering (SRE).' "
+                "before answering their question."
+            )
+
+        return "\n".join(prompt_parts)
 
     def build_rag_prompt(
         self,

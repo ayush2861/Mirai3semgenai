@@ -16,6 +16,10 @@ class DocumentMetadata(BaseModel):
     user_id: Optional[str] = "default_user"
     uploaded_at: str
 
+    @property
+    def id(self) -> str:
+        return self.document_id
+
 class DocumentDeleteResponse(BaseModel):
     document_id: str
     status: str = "deleted"

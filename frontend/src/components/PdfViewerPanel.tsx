@@ -157,7 +157,8 @@ export const PdfViewerPanel: React.FC<PdfViewerPanelProps> = ({
   const cleanPhrase = highlightPhrase.replace(/"/g, '');
 
   // Determine source URL: prefer instant local blobUrl if available, otherwise backend file stream
-  const rawFileUrl = blobUrl || (docId ? getDocumentFileUrl(docId) : '');
+  const targetDocId = docId || docName;
+  const rawFileUrl = blobUrl || (targetDocId ? getDocumentFileUrl(targetDocId) : '');
   const searchParam = cleanPhrase ? `&search="${encodeURIComponent(cleanPhrase)}"` : '';
   const iframeSrc = rawFileUrl ? `${rawFileUrl}#page=${pageNumber || 1}${searchParam}&view=FitH` : '';
 

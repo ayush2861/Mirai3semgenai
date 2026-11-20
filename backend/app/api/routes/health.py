@@ -4,6 +4,7 @@ from app.core.config import settings
 router = APIRouter(tags=["Health"])
 
 @router.get("/health")
+@router.head("/health")
 async def health_check():
     """
     Verifies that the InfraMind backend API is active and healthy.

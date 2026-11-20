@@ -341,8 +341,15 @@ def test_scenario_9_citation_accuracy(persistent_test_setup):
     """
     headers = persistent_test_setup["headers_a"]
     convs = client.get("/api/v1/conversations", headers=headers).json()
-    # Pick the conversation that has the attached document
-    conv = next((c for c in convs if len(c.get("documents", [])) > 0), None)
+    # Pick the conversation that has the 50p runbook attached
+    conv = next(
+        (c for c in convs if any(
+            d.get("document_name") == "titancloud_sre_incident_runbook_50p.pdf" or
+            d.get("filename") == "titancloud_sre_incident_runbook_50p.pdf"
+            for d in c.get("documents", [])
+        )),
+        None
+    )
     assert conv is not None, "Expected at least one conversation with an attached document"
     conv_id = conv["id"]
 

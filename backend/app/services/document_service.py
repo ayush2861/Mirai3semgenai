@@ -148,11 +148,27 @@ class DocumentService:
             docs = [d for d in docs if d.user_id == user_id]
         return docs
 
+    def resolve_document_id(self, document_id: str) -> Optional[str]:
+        """Resolves document_id by exact match, filename, stored_filename, or prefix."""
+        all_meta = self._load_metadata()
+        if document_id in all_meta:
+            return document_id
+        for did, m in all_meta.items():
+            if (
+                m.get("filename") == document_id
+                or m.get("stored_filename") == document_id
+                or did.startswith(document_id)
+                or document_id.startswith(did)
+            ):
+                return did
+        return None
+
     def get_document(self, document_id: str) -> DocumentMetadata:
         all_meta = self._load_metadata()
-        if document_id not in all_meta:
+        resolved_id = self.resolve_document_id(document_id)
+        if not resolved_id or resolved_id not in all_meta:
             raise DocumentNotFoundError(document_id)
-        m = all_meta[document_id]
+        m = all_meta[resolved_id]
         return DocumentMetadata(
             document_id=m["document_id"],
             filename=m["filename"],
@@ -166,9 +182,17 @@ class DocumentService:
     def get_document_path(self, document_id: str) -> Path:
         """Returns absolute path to the stored document file on persistent disk."""
         all_meta = self._load_metadata()
-        if document_id not in all_meta:
-            raise DocumentNotFoundError(document_id)
-        return settings.UPLOADS_DIR / all_meta[document_id]["stored_filename"]
+        resolved_id = self.resolve_document_id(document_id)
+        if resolved_id and resolved_id in all_meta:
+            stored = all_meta[resolved_id]["stored_filename"]
+            target = settings.UPLOADS_DIR / stored
+            if target.exists():
+                return target
+        # Direct fallback on uploads dir
+        candidates = list(settings.UPLOADS_DIR.glob(f"*{document_id}*"))
+        if candidates:
+            return candidates[0]
+        raise DocumentNotFoundError(document_id)
 
     def delete_document(self, document_id: str, user_id: Optional[str] = None) -> DocumentDeleteResponse:
         all_meta = self._load_metadata()

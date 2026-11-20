@@ -58,6 +58,8 @@ export interface ChatResponsePayload {
   message: string;
   answer?: string | null;
   sources: any[];
+  attached_documents?: any[];
+  mode?: 'normal_chat' | 'document_rag';
   status: string;
 }
 

@@ -82,6 +82,7 @@ async def get_document(
     return document_service.get_document(document_id)
 
 @router.get("/{document_id}/file", status_code=status.HTTP_200_OK)
+@router.head("/{document_id}/file", status_code=status.HTTP_200_OK)
 async def get_document_file(
     document_id: str,
     token: Optional[str] = Query(None),
@@ -93,22 +94,23 @@ async def get_document_file(
     """
     from app.core.config import settings
     all_meta = document_service._load_metadata()
-    if document_id not in all_meta:
-        from app.core.exceptions import DocumentNotFoundError
-        raise DocumentNotFoundError(document_id)
+    resolved_id = document_service.resolve_document_id(document_id)
+    doc_meta = all_meta.get(resolved_id) if resolved_id else None
 
-    doc_meta = all_meta[document_id]
-    stored_filename = doc_meta.get("stored_filename", "")
-    file_path = settings.UPLOADS_DIR / stored_filename
-    if not file_path.exists():
-        candidates = list(settings.UPLOADS_DIR.glob(f"{document_id}*"))
+    file_path = None
+    if doc_meta:
+        stored_filename = doc_meta.get("stored_filename", "")
+        file_path = settings.UPLOADS_DIR / stored_filename
+
+    if not file_path or not file_path.exists():
+        candidates = list(settings.UPLOADS_DIR.glob(f"*{document_id}*"))
         if candidates:
             file_path = candidates[0]
         else:
             from app.core.exceptions import DocumentNotFoundError
             raise DocumentNotFoundError(f"File for document {document_id} not found on disk.")
 
-    filename = doc_meta.get("filename", "document.pdf")
+    filename = doc_meta.get("filename", file_path.name) if doc_meta else file_path.name
     return FileResponse(
         path=str(file_path),
         media_type="application/pdf",
