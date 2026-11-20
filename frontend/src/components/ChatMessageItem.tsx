@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { Copy, Check, FileText, ChevronRight } from 'lucide-react';
 import { ChatMessage, SourceReference, AttachedDocument } from '../types';
 
@@ -24,10 +26,10 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Strip verbose "Document Citations" and trailing raw citation lines from markdown
-  const cleanContent = React.useMemo(() => {
+  // Strip verbose "Document Citations" and format LaTeX/Markdown cleanly
+  const cleanContent = useMemo(() => {
     if (!message.content) return '';
-    return message.content
+    const baseText = message.content
       // Strip "### Document Citations" or "Document Citations" and anything after it
       .replace(/(?:\r?\n)*#{0,4}\s*Document Citations[\s\S]*$/i, '')
       // Strip trailing "Source: ... Page: ..." lines
@@ -35,6 +37,38 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       // Strip trailing "- Source: ... Page: ..."
       .replace(/(?:(?:\r?\n)+[-*]\s*(?:\*\*Source:\*\*|Source:)\s*[^\n]+(?:\r?\n)+\s*(?:\*\*Page:\*\*|Page:)\s*\d+)+$/i, '')
       .trim();
+
+    // Preserve math formatting and ordinary currency while protecting code blocks
+    // Split into alternating non-code and code segments
+    const parts = baseText.split(/(```[\s\S]*?```|`[^`\n]*?`)/g);
+    return parts
+      .map((part, index) => {
+        // Odd index: code block or inline code — leave untouched
+        if (index % 2 === 1) {
+          return part;
+        }
+
+        // Outside code blocks:
+        // 1. Protect ordinary currency like $100, $50, $12.50, $1,000 from being treated as LaTeX
+        let processed = part.replace(
+          /(^|\s)\$(\d+(?:,\d{3})*(?:\.\d+)?)(?=\s|[.,;:!?)\]]|$)/g,
+          (_, lead, amount) => `${lead}\\$${amount}`
+        );
+
+        // 2. Normalize display equations $$...$$ into clean standalone block equations
+        processed = processed
+          .replace(
+            /([^\n])\s*\$\$([\s\S]+?)\$\$/g,
+            (_, p1, p2) => `${p1}\n\n$$\n${p2.trim()}\n$$\n\n`
+          )
+          .replace(
+            /\$\$([\s\S]+?)\$\$\s*([^\n])/g,
+            (_, p1, p2) => `\n\n$$\n${p1.trim()}\n$$\n\n${p2}`
+          );
+
+        return processed;
+      })
+      .join('');
   }, [message.content]);
 
   // Deduplicate sources by (document_name, page_number)
@@ -119,7 +153,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
           <div className="markdown-body text-[15px] text-[#E5E5E5] leading-relaxed select-text">
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
+              remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: true }]]}
+              rehypePlugins={[[rehypeKatex, { output: 'htmlAndMathml', strict: false, throwOnError: false }]]}
               components={{
                 code({ node, inline, className, children, ...props }: any) {
                   const match = /language-(\w+)/.exec(className || '');

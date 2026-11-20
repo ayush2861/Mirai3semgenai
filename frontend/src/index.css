@@ -29,6 +29,32 @@
   background: #3B82F6;
 }
 
+/* KaTeX Math Typography & Display Styling */
+.katex {
+  font-size: 1.05em;
+  color: #F1F5F9;
+}
+
+.katex-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1.2em 0 !important;
+  padding: 0.85em 1.25rem !important;
+  background-color: #121212;
+  border: 1px solid #242424;
+  border-radius: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
+
+.katex-display > .katex {
+  font-size: 1.15em;
+  text-align: center;
+  white-space: normal;
+}
+
 /* Markdown typography styling */
 .markdown-body {
   color: #E2E8F0;
