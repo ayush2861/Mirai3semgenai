@@ -240,9 +240,15 @@ export const App: React.FC = () => {
     const trimmed = input.trim();
     if (!trimmed && pendingAttachments.length === 0 && conversationDocuments.length === 0) return;
 
-    const newDocIds = pendingAttachments
-      .map(f => f.document_id)
-      .filter((id): id is string => Boolean(id));
+    // Combine pending new attachments with existing conversation documents so context is never lost across turns
+    const allDocIds = Array.from(
+      new Set(
+        [
+          ...pendingAttachments.map(f => f.document_id),
+          ...conversationDocuments.map(f => f.document_id || f.id)
+        ].filter((id): id is string => Boolean(id))
+      )
+    );
 
     const promptText = trimmed || (pendingAttachments.length > 0
       ? `Please analyze and summarize the attached document: ${pendingAttachments.map(f => f.name).join(', ')}`
@@ -269,7 +275,7 @@ export const App: React.FC = () => {
       const res = await sendChatMessage(
         promptText,
         activeConvId || undefined,
-        newDocIds.length > 0 ? newDocIds : undefined
+        allDocIds.length > 0 ? allDocIds : undefined
       );
       setMessages(prev => [...prev, res.message]);
       setActiveConvId(res.conversation_id);
@@ -277,6 +283,8 @@ export const App: React.FC = () => {
       // Persist attached files in conversation context so user can continue asking questions
       if (res.attached_documents && res.attached_documents.length > 0) {
         setConversationDocuments(res.attached_documents);
+      } else if (allDocIds.length > 0 && conversationDocuments.length === 0) {
+        setConversationDocuments(pendingAttachments.filter(f => Boolean(f.document_id)));
       }
 
       // Refresh conversations list to update titles/timestamps

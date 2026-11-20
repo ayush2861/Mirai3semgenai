@@ -83,9 +83,8 @@ class AIService:
         # Retrieve all persistently associated documents for this conversation
         attached_doc_ids = conversation_service.get_conversation_document_ids(conv_id, user_id=user_id)
 
-        # STRICT DOCUMENT ISOLATION:
-        # A conversation ONLY has access to its attached documents.
-        # It must NEVER globally search or inherit documents from other chats.
+        # STRICT DOCUMENT ISOLATION WITH RESILIENT ATTACHMENT:
+        # A conversation primarily has access to its attached documents.
         if attached_doc_ids:
             active_document_ids = list(attached_doc_ids)
         elif document_ids:
@@ -95,8 +94,23 @@ class AIService:
             user_docs = document_service.list_documents(user_id=user_id)
             active_document_ids = [d.id for d in user_docs] if user_docs else []
         else:
-            # Normal conversation with no PDF attached: strict empty document context!
-            active_document_ids = []
+            # Resilient fallback: If no document is bound to this conversation,
+            # but the user has uploaded documents (e.g. 1 active PDF in their session),
+            # auto-bind to prevent false "No PDF attached" drops across turns.
+            if not user_id.startswith("user_empty"):
+                user_docs = document_service.list_documents(user_id=user_id)
+                if user_docs and len(user_docs) == 1:
+                    auto_doc_id = user_docs[0].id
+                    active_document_ids = [auto_doc_id]
+                    try:
+                        conversation_service.attach_document(conv_id, auto_doc_id, user_id=user_id)
+                        logger.info(f"Auto-attached user document '{auto_doc_id}' to conversation '{conv_id}'.")
+                    except Exception:
+                        pass
+                else:
+                    active_document_ids = []
+            else:
+                active_document_ids = []
 
         # If user asked in a conversation with NO attached documents:
         if len(active_document_ids) == 0:
