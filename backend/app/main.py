@@ -55,7 +55,7 @@ if settings.FRONTEND_ORIGIN and settings.FRONTEND_ORIGIN not in cors_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_origin_regex=r"https://.*\.onrender\.com" if settings.APP_ENV == "production" else None,
+    allow_origin_regex=r"https://.*(\.vercel\.app|\.onrender\.com)",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
     allow_headers=["*"],
