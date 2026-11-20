@@ -214,7 +214,7 @@ class DocumentService:
         doc_info = all_meta.pop(document_id)
         self._save_metadata(all_meta)
 
-        # Remove physical file safely
+        # Remove physical file safely from uploads
         stored_filename = doc_info.get("stored_filename")
         if stored_filename:
             file_path = settings.UPLOADS_DIR / stored_filename
@@ -223,6 +223,14 @@ class DocumentService:
                     file_path.unlink()
                 except Exception as e:
                     logger.warning(f"Could not delete physical file {file_path}: {e}")
+
+        # Remove processed chunk artifact from data/processed
+        processed_file = settings.DATA_DIR / "processed" / f"{document_id}.json"
+        if processed_file.exists():
+            try:
+                processed_file.unlink()
+            except Exception as e:
+                logger.warning(f"Could not delete processed file {processed_file}: {e}")
 
         # Also purge vector embeddings and BM25 index
         try:

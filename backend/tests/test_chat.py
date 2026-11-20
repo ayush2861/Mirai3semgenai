@@ -1,4 +1,16 @@
+import pytest
 from fastapi import status
+from app.services.conversation_service import conversation_service
+
+@pytest.fixture(autouse=True)
+def clean_default_user_chats():
+    all_convs = conversation_service._load_all()
+    cleaned = {cid: c for cid, c in all_convs.items() if c.get("user_id") != "default_user"}
+    conversation_service._save_all(cleaned)
+    yield
+    all_convs = conversation_service._load_all()
+    cleaned = {cid: c for cid, c in all_convs.items() if c.get("user_id") != "default_user"}
+    conversation_service._save_all(cleaned)
 
 def test_valid_chat_request(client):
     """Test 2: Valid chat inquiry returns grounded response structure with generated conversation_id."""

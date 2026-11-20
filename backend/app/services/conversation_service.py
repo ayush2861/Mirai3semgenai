@@ -145,6 +145,19 @@ class ConversationService:
         document_ids: Optional[List[str]] = None
     ) -> ConversationDetail:
         """Creates a new conversation with optional initial document attachments."""
+        all_convs = self._load_all()
+        # Enforce maximum conversation limit of 5 per user
+        MAX_CONVERSATIONS = 5
+        user_convs = [c for c in all_convs.values() if c.get("user_id", settings.DEFAULT_USER_ID) == user_id]
+        if len(user_convs) >= MAX_CONVERSATIONS:
+            from app.core.exceptions import AppException
+            raise AppException(
+                status_code=400,
+                message=f"Conversation limit reached ({MAX_CONVERSATIONS}/{MAX_CONVERSATIONS}). Please delete an existing chat from the sidebar to continue with a new chat.",
+                code="CONVERSATION_LIMIT_REACHED",
+                details={"max_conversations": MAX_CONVERSATIONS, "current_count": len(user_convs)}
+            )
+
         conv_id = f"conv-{uuid.uuid4().hex[:12]}"
         now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -170,7 +183,6 @@ class ConversationService:
             "messages": []
         }
 
-        all_convs = self._load_all()
         all_convs[conv_id] = conv_data
         self._save_all(all_convs)
 
@@ -192,7 +204,7 @@ class ConversationService:
         user_id: str = "default_user",
         title: Optional[str] = None
     ) -> dict:
-        """Retrieves existing conversation dict or creates a new one."""
+        """Retrieves existing conversation dict or creates a new one with 5 chats limit enforcement."""
         all_convs = self._load_all()
         if conv_id and conv_id in all_convs:
             c = all_convs[conv_id]
@@ -200,6 +212,18 @@ class ConversationService:
             if conv_owner != user_id and user_id not in ("user-admin-01", "sre_admin") and conv_owner != "default_user":
                 raise UnauthorizedAccessError(f"You do not have permission to access conversation '{conv_id}'.")
             return c
+
+        # Enforce maximum conversation limit of 5 per user
+        MAX_CONVERSATIONS = 5
+        user_convs = [c for c in all_convs.values() if c.get("user_id", settings.DEFAULT_USER_ID) == user_id]
+        if len(user_convs) >= MAX_CONVERSATIONS:
+            from app.core.exceptions import AppException
+            raise AppException(
+                status_code=400,
+                message=f"Conversation limit reached ({MAX_CONVERSATIONS}/{MAX_CONVERSATIONS}). Please delete an existing chat from the sidebar to continue with a new chat.",
+                code="CONVERSATION_LIMIT_REACHED",
+                details={"max_conversations": MAX_CONVERSATIONS, "current_count": len(user_convs)}
+            )
 
         target_id = conv_id or f"conv-{uuid.uuid4().hex[:12]}"
         now_iso = datetime.now(timezone.utc).isoformat()
@@ -347,7 +371,7 @@ class ConversationService:
         return ConversationMessage(**new_msg)
 
     def delete_conversation(self, conv_id: str, user_id: str = "default_user") -> bool:
-        """Deletes a conversation."""
+        """Deletes a conversation and purges its attached document data from data folder."""
         all_convs = self._load_all()
         if conv_id not in all_convs:
             return False
@@ -357,9 +381,48 @@ class ConversationService:
         if conv_owner != user_id and user_id not in ("user-admin-01", "sre_admin") and conv_owner != "default_user":
             raise UnauthorizedAccessError(f"You do not have permission to delete conversation '{conv_id}'.")
 
+        # Collect all documents attached to this conversation
+        attached_docs = c.get("documents", [])
+        attached_doc_ids = set()
+        for d in attached_docs:
+            if isinstance(d, dict) and d.get("document_id"):
+                attached_doc_ids.add(d["document_id"])
+            elif isinstance(d, str):
+                attached_doc_ids.add(d)
+
+        for msg in c.get("messages", []):
+            for af in msg.get("attached_files", []):
+                if isinstance(af, dict) and af.get("document_id"):
+                    attached_doc_ids.add(af["document_id"])
+
         del all_convs[conv_id]
         self._save_all(all_convs)
         logger.info(f"Deleted conversation '{conv_id}'.")
+
+        # Check if attached documents are used in any remaining conversation for this user
+        other_used_docs = set()
+        for other_id, other_conv in all_convs.items():
+            if other_conv.get("user_id") == conv_owner:
+                for od in other_conv.get("documents", []):
+                    if isinstance(od, dict) and od.get("document_id"):
+                        other_used_docs.add(od["document_id"])
+                    elif isinstance(od, str):
+                        other_used_docs.add(od)
+                for omsg in other_conv.get("messages", []):
+                    for oaf in omsg.get("attached_files", []):
+                        if isinstance(oaf, dict) and oaf.get("document_id"):
+                            other_used_docs.add(oaf["document_id"])
+
+        # Delete documents attached to this deleted chat from the data folder
+        from app.services.document_service import document_service
+        docs_to_delete = attached_doc_ids - other_used_docs
+        for doc_id in docs_to_delete:
+            try:
+                document_service.delete_document(doc_id, user_id=user_id)
+                logger.info(f"Cleaned up document {doc_id} associated with deleted conversation {conv_id} from data folder.")
+            except Exception as de:
+                logger.warning(f"Failed to delete attached document {doc_id} from data folder: {de}")
+
         return True
 
     def get_history(self, conv_id: str, user_id: str = "default_user", limit: int = 10) -> List[Dict[str, str]]:

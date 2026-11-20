@@ -80,6 +80,11 @@ def persistent_test_setup():
 
     headers_b = {"Authorization": f"Bearer {token_b}"}
 
+    # Clean leftover conversations for user_a and user_b so tests start with a clean state
+    all_convs = conversation_service._load_all()
+    cleaned = {cid: c for cid, c in all_convs.items() if c.get("user_id") not in (user_a_id, user_b_id)}
+    conversation_service._save_all(cleaned)
+
     # PDF 1: PostgreSQL Failover Runbook
     pdf1_content = (
         "TitanCloud PostgreSQL Failover Runbook.\n"

@@ -144,10 +144,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
           <button
             onClick={onNewChat}
-            title="New Chat"
-            className="p-2 text-[#A3A3A3] hover:text-white hover:bg-[#1C1C1C] rounded-lg transition-colors"
+            title={conversations.length >= 5 ? "New Chat (Limit reached 5/5 - delete a chat to continue)" : "New Chat"}
+            className={`p-2 rounded-lg transition-colors relative ${
+              conversations.length >= 5
+                ? 'text-amber-400 hover:text-amber-300 hover:bg-[#1C1C1C]'
+                : 'text-[#A3A3A3] hover:text-white hover:bg-[#1C1C1C]'
+            }`}
           >
             <SquarePen size={20} />
+            {conversations.length >= 5 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400" />
+            )}
           </button>
           <button
             onClick={onOpenRunbooks}
@@ -225,16 +232,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={onNewChat}
             className={`w-full flex items-center justify-between px-3 h-[46px] rounded-xl text-[14px] font-medium transition-all ${
-              activeConvId === null && activeNavView === 'chat'
+              conversations.length >= 5
+                ? 'bg-[#181818] text-[#E5E5E5] border border-amber-500/30 hover:bg-[#202020]'
+                : activeConvId === null && activeNavView === 'chat'
                 ? 'bg-[#1C1C1C] text-white'
                 : 'bg-[#141414] text-white hover:bg-[#1C1C1C]'
             }`}
           >
             <div className="flex items-center space-x-3">
-              <SquarePen size={18} className="text-[#A3A3A3]" />
+              <SquarePen size={18} className={conversations.length >= 5 ? "text-amber-400" : "text-[#A3A3A3]"} />
               <span>New chat</span>
             </div>
-            <span className="text-xs text-[#737373] font-mono">⌘N</span>
+            {conversations.length >= 5 ? (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                5/5 Max
+              </span>
+            ) : (
+              <span className="text-xs text-[#737373] font-mono">⌘N</span>
+            )}
           </button>
 
           {/* Runbooks */}
@@ -285,8 +300,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* WORKSPACES Section */}
         <div className="px-3 pt-5 pb-2 flex-1 overflow-y-auto">
-          <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-[#737373] uppercase">
-            Workspaces
+          <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-[#737373] uppercase flex items-center justify-between">
+            <span>Workspaces</span>
+            <span className={`text-[10px] font-mono ${conversations.length >= 5 ? 'text-amber-400 font-semibold' : 'text-[#666666]'}`}>
+              {conversations.length}/5
+            </span>
           </div>
 
           <div className="space-y-0.5">

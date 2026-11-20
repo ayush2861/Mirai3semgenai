@@ -7,6 +7,7 @@ import { IncidentsModal } from './components/IncidentsModal';
 import { KnowledgeBaseModal } from './components/KnowledgeBaseModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SearchModal } from './components/SearchModal';
+import { ChatLimitModal } from './components/ChatLimitModal';
 import { PdfViewerPanel, PdfViewerDocument } from './components/PdfViewerPanel';
 import {
   fetchConversations,
@@ -67,6 +68,7 @@ export const App: React.FC = () => {
   const [showKnowledgeModal, setShowKnowledgeModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showChatLimitModal, setShowChatLimitModal] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<AttachedDocument[]>([]);
   const [conversationDocuments, setConversationDocuments] = useState<AttachedDocument[]>([]);
 
@@ -168,6 +170,10 @@ export const App: React.FC = () => {
   };
 
   const handleNewChat = () => {
+    if (conversations.length >= 5) {
+      setShowChatLimitModal(true);
+      return;
+    }
     setActiveConvId(null);
     setActiveConversation(null);
     setMessages([]);
@@ -441,8 +447,26 @@ export const App: React.FC = () => {
       await deleteConversation(id);
       const remaining = conversations.filter(c => c.id !== id);
       setConversations(remaining);
+      if (remaining.length < 5) {
+        setShowChatLimitModal(false);
+      }
       if (activeConvId === id) {
-        handleNewChat();
+        setActiveConvId(null);
+        setActiveConversation(null);
+        setMessages([]);
+        setInput('');
+        setPendingAttachments([]);
+        setConversationDocuments([]);
+        setActivePdfDoc(null);
+        setActivePdfPage(undefined);
+        setActivePdfSnippet(undefined);
+      }
+      // Refresh documents list to reflect cascaded document deletion from data folder
+      try {
+        const updatedDocs = await fetchDocuments();
+        setDocuments(updatedDocs);
+      } catch (docErr) {
+        console.warn('Failed to refresh documents after conversation deletion:', docErr);
       }
     } catch (err) {
       console.error('Failed to delete conversation:', err);
@@ -450,6 +474,12 @@ export const App: React.FC = () => {
   };
 
   const handleSend = async () => {
+    // If user has reached 5 conversations and tries to start a brand new conversation without an active one
+    if (!activeConvId && conversations.length >= 5) {
+      setShowChatLimitModal(true);
+      return;
+    }
+
     const isAnyPendingProcessing = pendingAttachments.some(
       f => f.status === 'uploading' || f.status === 'indexing' || f.isUploading
     );
@@ -510,6 +540,9 @@ export const App: React.FC = () => {
       setConversations(updatedConvs);
     } catch (err: any) {
       console.error('Chat error:', err);
+      if (err.message?.includes('Conversation limit reached') || err.message?.includes('CONVERSATION_LIMIT_REACHED')) {
+        setShowChatLimitModal(true);
+      }
       const isPdfMode = pendingAttachments.length > 0 || conversationDocuments.length > 0;
       const errorPrefix = isPdfMode ? 'Failed to process document inquiry' : 'Failed to process request';
       const errorMsg: ChatMessage = {
@@ -688,6 +721,15 @@ export const App: React.FC = () => {
           conversations={conversations}
           onSelectConversation={handleSelectConversation}
           onClose={() => setShowSearchModal(false)}
+        />
+      )}
+
+      {showChatLimitModal && (
+        <ChatLimitModal
+          isOpen={showChatLimitModal}
+          onClose={() => setShowChatLimitModal(false)}
+          conversations={conversations}
+          onDeleteConversation={handleDeleteConversation}
         />
       )}
     </div>
