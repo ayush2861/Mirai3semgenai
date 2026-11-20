@@ -20,10 +20,10 @@ class GeminiProvider(BaseLLMProvider):
 
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY")
-        self.primary_model = settings.GEMINI_MODEL or "gemini-3.1-flash-lite"
+        self.primary_model = settings.GEMINI_MODEL or "gemini-3.5-flash-lite"
         
         # Parse fallback models
-        fallback_str = settings.GEMINI_FALLBACK_MODELS or "gemini-3.1-flash-lite,gemini-3.8-flash"
+        fallback_str = settings.GEMINI_FALLBACK_MODELS or "gemini-3.5-flash-lite,gemini-3.5-flash"
         self.candidate_models = [m.strip() for m in fallback_str.split(",") if m.strip()]
         if self.primary_model not in self.candidate_models:
             self.candidate_models.insert(0, self.primary_model)

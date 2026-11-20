@@ -46,8 +46,8 @@ class Settings(BaseSettings):
 
     # Gemini AI Provider Settings
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-3.1-flash-lite"
-    GEMINI_FALLBACK_MODELS: str = "gemini-3.8-flash,gemini-3.1-flash-lite"
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
+    GEMINI_FALLBACK_MODELS: str = "gemini-3.5-flash-lite,gemini-3.5-flash"
     LLM_PROVIDER: str = "gemini"
     GEMINI_MAX_OUTPUT_TOKENS: int = 2048
     GEMINI_TEMPERATURE: float = 0.2
